@@ -26,107 +26,79 @@ pub fn compute_query_flat_tree<F>(
     rect: &Rect,
     mut func: F,
 ) where F: FnMut(&Pt) {
-    for p in pts.iter() {
-        if rect.contains(&p.pos) { func(p);}
-    }
-    return;
+    //for p in pts.iter() { if rect.contains(&p.pos) { func(p);} }
+    //return;
     // Below is the more efficient implementation
-    //if pts.len() <= 8 {
-    //    for p in pts.iter() {
-    //        if rect.contains(&p.pos) { func(p);}
-    //    }
-    //    return;
-    //}
-    //panic!("not implemented");
+    if pts.len() <= 8 {
+        for p in pts.iter() { if rect.contains(&p.pos) { func(p);} }
+    } else {
+        query_two_d_tree(pts, rect.clone(), func);
+    }
 }
 
-/*
-pub fn query_two_d_tree<F>(points: &[PolyVert], r: Rect, mut f: F) where F: FnMut(PolyVert) {
-    // For small inputs (<= 8), do a simple linear scan like the C++ early-return path.
-    if points.len() <= 8 {
-        for &p in points.iter() {
-            if r.contains(p.pos) {
-                f(p);
-            }
-        }
-        return;
-    }
+pub fn query_two_d_tree<F>(pts: &[Pt], r: Rect, mut f: F) where F: FnMut(&Pt) {
+    let mut cur: Rect = Rect::default();
+    let mut lev: i32 = 0;
+    let mut bgn: usize = 0;
+    let mut len: usize = pts.len();
 
-    // Current traversal state
-    let mut current_rect = Rect::infinite();
-    let mut level: i32 = 0;
-    let mut start: usize = 0;
-    let mut len: usize = points.len();
+    cur.min = Row2f::new(f64::MIN, f64::MIN);
+    cur.max = Row2f::new(f64::MAX, f64::MAX);
 
     // Stack holds deferred right subtrees: (rect, start, len, level)
     let mut stack: Vec<(Rect, usize, usize, i32)> = Vec::with_capacity(64);
 
     loop {
-        if len <= 2 {
-            // Visit small leaf directly
+        if len <= 8 {
             for i in 0..len {
-                let p = points[start + i];
-                if r.contains(p.pos) {
-                    f(p);
-                }
+                let p = &pts[bgn + i];
+                if r.contains(&p.pos) { f(p); }
             }
-            // Pop next work item or finish
-            if let Some((rect2, s2, l2, lvl2)) = stack.pop() {
-                current_rect = rect2;
-                start = s2;
-                len = l2;
-                level = lvl2;
+            if let Some((r, b, ln, lv)) = stack.pop() {
+                cur = r;
+                bgn = b;
+                len = ln;
+                lev = lv;
                 continue;
-            } else {
-                break;
-            }
+            } else { break; }
         }
 
-        let mid_off = len / 2;
-        let mid_idx = start + mid_off;
-        let middle = points[mid_idx];
+        let mid_oft = len / 2;
+        let mid_idx = bgn + mid_oft;
+        let mid     = &pts[mid_idx];
 
-        // Conceptual left/right rectangles derived from current_rect
-        let mut left = current_rect;
-        let mut right = current_rect;
-        if level % 2 == 0 {
-            left.max.x = middle.pos.x;
-            right.min.x = middle.pos.x;
+        let mut rect_l = cur.clone();
+        let mut rect_r = cur.clone();
+        if lev % 2 == 0 {
+            rect_l.max.x = mid.pos.x;
+            rect_r.min.x = mid.pos.x;
         } else {
-            left.max.y = middle.pos.y;
-            right.min.y = middle.pos.y;
+            rect_l.max.y = mid.pos.y;
+            rect_r.min.y = mid.pos.y;
         }
 
-        if r.contains(middle.pos) {
-            f(middle);
-        }
+        if r.contains(&mid.pos) { f(mid); }
 
-        let left_overlaps = left.does_overlap(&r);
-        let right_overlaps = right.does_overlap(&r);
+        let overlaps_l = rect_l.overlap(&r);
+        let overlaps_r = rect_r.overlap(&r);
 
-        if left_overlaps {
-            if right_overlaps {
-                // Defer right subtree
-                let right_start = mid_idx + 1;
-                let right_len = len - (mid_off + 1);
-                stack.push((right, right_start, right_len, level + 1));
+        if overlaps_l {
+            if overlaps_r {
+                let r_bgn = mid_idx + 1;
+                let r_len = len - (mid_oft + 1);
+                stack.push((rect_r, r_bgn, r_len, lev + 1));
             }
-            // Continue with left subtree
-            current_rect = left;
-            // left range: [start, start + mid_off)
-            len = mid_off;
-            level += 1;
-            // start remains same
+            cur = rect_l;
+            len = mid_oft;
+            lev += 1;
         } else {
-            // Skip left, go right directly
-            current_rect = right;
-            start = mid_idx + 1;
-            len = len - (mid_off + 1);
-            level += 1;
+            cur = rect_r;
+            bgn = mid_idx + 1;
+            len = len - (mid_oft + 1);
+            lev += 1;
         }
     }
 }
-*/
 
 #[derive(Clone)]
 pub struct Rect {
@@ -153,6 +125,13 @@ impl Rect {
         p.x <= self.max.x &&
         p.y >= self.min.y &&
         p.y <= self.max.y
+    }
+
+    pub fn overlap(&self, r: &Rect) -> bool {
+        self.max.x >= r.min.x &&
+        self.max.y >= r.min.y &&
+        self.min.x <= r.max.x &&
+        self.min.y <= r.max.y
     }
 
     pub fn size(&self) -> Row2f { self.max - self.min }
