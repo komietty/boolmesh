@@ -75,25 +75,6 @@ pub fn compute_boolean(
     )
 }
 
-//pub fn compute_boolean_from_raw_data(
-//    pos0: &[Real],
-//    idx0: &[usize],
-//    pos1: &[Real],
-//    idx1: &[usize],
-//    op_type: usize
-//) -> Result<Manifold, String>{
-//    let mp = Manifold::new(&pos0, &idx0)?;
-//    let mq = Manifold::new(&pos1, &idx1)?;
-//    let op = match op_type {
-//        0 => OpType::Add,
-//        1 => OpType::Subtract,
-//        2 => OpType::Intersect,
-//        _ => return Err("Invalid op_type".into())
-//    };
-//    compute_boolean(&mp, &mq, op)
-//}
-
-
 
 
 
