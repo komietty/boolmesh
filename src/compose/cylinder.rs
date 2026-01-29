@@ -2,14 +2,15 @@
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
 use std::f64::consts::PI;
+use std::fmt::Debug;
 use crate::{Manifold, Vec3, Vec3u, Real};
 
-pub fn generate_cylinder(
+pub fn generate_cylinder<S: Clone + Send + Sync + Debug + PartialEq>(
     r: f64,    // radius
     h: f64,    // height
     d0: usize, // sectors
     d1: usize, // stacks
-) -> Result<Manifold, String> {
+) -> Result<Manifold<S>, String> {
     if d0 < 3 || d1 < 1 { return Err("sectors must be >= 3 and stacks must be >= 1".into()); }
     let mut ps = vec![];
     let mut ts = vec![];
@@ -45,5 +46,5 @@ pub fn generate_cylinder(
         }
     }
 
-    Manifold::new_impl(ps, ts, None, None)
+    Manifold::new_impl(ps, ts, vec![], None, None)
 }

@@ -6,14 +6,17 @@ pub mod bounds;
 pub mod collider;
 
 use std::cmp::Ordering;
+use std::fmt::Debug;
 use bounds::BBox;
-use crate::collider::{morton_code, MortonCollider, K_NO_CODE};
-use crate::{Real, Half, Vec3, Vec3u, K_PRECISION, next_of, Mat3};
-use super::hmesh::Hmesh;
+use hmesh::Hmesh;
+use collider::{morton_code, MortonCollider, K_NO_CODE};
+use crate::{Tref, Half, Real, Vec3, Vec2u, Vec3u, K_PRECISION, next_of, Mat3};
 #[cfg(feature = "rayon")] use rayon::prelude::*;
 
+
+
 #[derive(Clone, Debug)]
-pub struct Manifold {
+pub struct Manifold<S> {
     pub ps: Vec<Vec3>,            // positions
     pub hs: Vec<Half>,            // halfedges
     pub nv: usize,                // number of vertices
@@ -21,32 +24,34 @@ pub struct Manifold {
     pub nh: usize,                // number of halfedges
     pub eps: Real,                // epsilon
     pub tol: Real,                // tolerance
+    pub inh: Vec<S>,              //
     pub bounding_box: BBox,       //
     pub face_normals: Vec<Vec3>,  //
     pub vert_normals: Vec<Vec3>,  //
-    pub original_idx: Vec<usize>, //
     pub collider: MortonCollider, //
     pub coplanar: Vec<i32>,       // indices of coplanar faces
 }
 
-impl Manifold {
+impl<S: Clone + Send + Sync + Debug + PartialEq> Manifold<S> {
     pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> {
         Self::new_impl(
             pos.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect(),
             idx.chunks(3).map(|i| Vec3u::new(i[0], i[1], i[2])).collect(),
-            None, None
+            vec![], None, None
         )
     }
 
     pub fn new_impl(
         ps : Vec<Vec3>,
         idx: Vec<Vec3u>,
+        inh: Vec<S>,
         eps: Option<Real>,
         tol: Option<Real>,
     ) -> Result<Self, String> {
         let bb = BBox::new(None, &ps);
         let (mut f_bb, mut f_mt) = compute_face_morton(&ps, &idx, &bb);
-        let hm = sort_faces(&ps, &idx, &mut f_bb, &mut f_mt)?;
+        let mut inh_ = inh.clone();
+        let hm = sort_faces(&ps, &idx, &mut inh_, &mut f_bb, &mut f_mt)?;
         let hs = hm.half.iter().map(|&i| Half::new(hm.tail[i], hm.head[i], hm.twin[i])).collect::<Vec<_>>();
 
         let mut e = K_PRECISION * bb.scale();
@@ -65,7 +70,7 @@ impl Manifold {
             bounding_box: bb,
             vert_normals: hm.vns,
             face_normals: hm.fns,
-            original_idx: vec![],
+            inh: inh_,
             eps,
             tol,
             collider,
@@ -109,19 +114,32 @@ impl Manifold {
     pub fn translate(&mut self, x: f64, y: f64, z: f64) {
         let t = Vec3::new(x as Real, y as Real, z as Real);
         let p = self.ps.iter().map(|p| *p + t).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
+        *self = Manifold::new_impl(p, self.get_indices(), self.inh.clone(), None, None).unwrap();
     }
 
     pub fn rotate(&mut self, x: f64, y: f64, z: f64) {
         let r = Mat3::from_euler(glam::EulerRot::XYZ, x as Real, y as Real, z as Real);
         let p = self.ps.iter().map(|p| r * *p).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
+        *self = Manifold::new_impl(p, self.get_indices(), self.inh.clone(), None, None).unwrap();
     }
 
     pub fn scale(&mut self, x: f64, y: f64, z: f64) {
         let p = self.ps.iter().map(|p| Vec3::new(p.x * x as Real, p.y * y as Real, p.z * z as Real)).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
+        *self = Manifold::new_impl(p, self.get_indices(), self.inh.clone(), None, None).unwrap();
     }
+
+    pub fn set_inheritances(
+        &mut self,
+        val: Vec<S>
+    ) {
+        *self = Manifold::new_impl(
+            self.ps.clone(),
+            self.get_indices(),
+            val,
+            None, None
+        ).unwrap();
+    }
+
 }
 
 fn compute_face_morton(
@@ -164,9 +182,10 @@ fn compute_face_morton(
     (bbs, mts)
 }
 
-fn sort_faces(
+fn sort_faces<S: Clone + Send + Sync + Debug + PartialEq>(
     pos: &[Vec3],
     idx: &[Vec3u],
+    inh: &mut Vec<S>,
     face_bboxes: &mut Vec<BBox>,
     face_morton: &mut Vec<u32>
 ) -> Result<Hmesh, String> {
@@ -174,7 +193,7 @@ fn sort_faces(
     map.sort_by_key(|&i| face_morton[i]);
     *face_bboxes = map.iter().map(|&i| face_bboxes[i].clone()).collect::<Vec<_>>();
     *face_morton = map.iter().map(|&i| face_morton[i]).collect::<Vec<_>>();
-
+    if !inh.is_empty() { *inh = map.iter().map(|&i| inh[i].clone()).collect(); }
     Hmesh::new(pos, &map.iter().map(|&i| idx[i]).collect::<Vec<_>>())
 }
 
@@ -232,7 +251,8 @@ fn compute_coplanar_idx(
 
 pub fn cleanup_unused_verts(
     ps: &mut Vec<Vec3>,
-    hs: &mut Vec<Half>
+    hs: &mut Vec<Half>,
+    rs: &mut Vec<Tref>,
 ) {
     let bb = BBox::new(None, ps);
     let mt = ps.iter().map(|p| morton_code(p, &bb)).collect::<Vec<_>>();
@@ -257,7 +277,15 @@ pub fn cleanup_unused_verts(
 
     new2old.truncate(nv);
 
+    let mut rs_ = vec![];
+    for i in 0..hs.len() / 3 {
+        let j = i * 3;
+        if hs[j].pair().is_none() { continue; }
+        rs_.push(rs[i].clone());
+    }
+
     *ps = new2old.iter().map(|&i| ps[i]).collect();
     *hs = hs.iter().filter(|h| h.pair().is_some()).cloned().collect();
+    *rs = rs_;
 }
 

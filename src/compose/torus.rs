@@ -9,7 +9,7 @@ pub fn generate_torus(
     r1: f64,   // minor radius
     d0: usize, // rings
     d1: usize, // sectors
-) -> Result<Manifold, String> {
+) -> Result<Manifold<f32>, String> {
 
     let mut ps = Vec::with_capacity(d0 * d1);
     let mut ts = Vec::with_capacity(d0 * d1 * 6);
@@ -41,5 +41,5 @@ pub fn generate_torus(
         }
     }
 
-    Manifold::new_impl(ps, ts, None, None)
+    Manifold::new_impl(ps, ts, vec![], None, None)
 }

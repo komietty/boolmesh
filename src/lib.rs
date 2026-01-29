@@ -14,6 +14,7 @@ mod boolean45;
 mod compose;
 mod tests;
 
+use std::fmt::Debug;
 use crate::boolean03::boolean03;
 use crate::boolean45::boolean45;
 use crate::simplification::simplify_topology;
@@ -40,11 +41,11 @@ pub mod prelude {
     };
 }
 
-pub fn compute_boolean(
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn compute_boolean<S: Clone + Send + Sync + Debug + PartialEq>(
+    mp: &Manifold<S>,
+    mq: &Manifold<S>,
     op: OpType,
-) -> Result<Manifold, String> {
+) -> Result<Manifold<S>, String> {
     let eps = mp.eps.max(mq.eps);
     let tol = mp.tol.max(mq.tol);
 
@@ -64,12 +65,22 @@ pub fn compute_boolean(
 
     cleanup_unused_verts(
         &mut b45.ps,
-        &mut trg.hs
+        &mut trg.hs,
+        &mut trg.rs
     );
+
+    let mut inh = vec![];
+    if !mp.inh.is_empty() && !mq.inh.is_empty() {
+        for r in trg.rs.iter() {
+            if r.mid == 0 { inh.push(mp.inh[r.fid].clone()) }
+            else          { inh.push(mq.inh[r.fid].clone()) }
+        }
+    }
 
     Manifold::new_impl(
         b45.ps,
         trg.hs.chunks(3).map(|hs| Vec3u::new(hs[0].tail, hs[1].tail, hs[2].tail)).collect(),
+        inh,
         Some(eps),
         Some(tol)
     )

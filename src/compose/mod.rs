@@ -8,6 +8,7 @@ pub mod sphere;
 pub mod torus;
 pub mod cylinder;
 
+use std::fmt::Debug;
 pub use cone::*;
 pub use cube::*;
 pub use sphere::*;
@@ -19,7 +20,7 @@ use crate::common::{compute_aa_proj, get_aa_proj_matrix, Vec3u};
 use crate::triangulation::ear_clip::EarClip;
 use crate::triangulation::Pt;
 
-pub fn extrude(pts: &[Vec3], offset: Vec3) -> Result<Manifold, String> {
+pub fn extrude<S: Clone + Send + Sync + Debug + PartialEq>(pts: &[Vec3], offset: Vec3) -> Result<Manifold<S>, String> {
     let n = Vec3::new(0., 0., 1.);
     let proj = get_aa_proj_matrix(&n);
     let poly = pts.iter().enumerate().map(|(i, p)| Pt {pos: compute_aa_proj(&proj, p), idx: i}).collect::<Vec<_>>();
@@ -37,10 +38,10 @@ pub fn extrude(pts: &[Vec3], offset: Vec3) -> Result<Manifold, String> {
         oft_ts.push(Vec3u::new(i, j, i + n));
         oft_ts.push(Vec3u::new(i + n, j, j + n));
     }
-    Manifold::new_impl(oft_ps, oft_ts, None, None)
+    Manifold::new_impl(oft_ps, oft_ts, vec![], None, None)
 }
 
-pub fn compose(ms: &Vec<Manifold>) -> Result<Manifold, String> {
+pub fn compose<S: Clone + Send + Sync + Debug + PartialEq>(ms: &Vec<Manifold<S>>) -> Result<Manifold<S>, String> {
     let mut ps = vec![];
     let mut ts = vec![];
     let mut offset = 0;
@@ -56,9 +57,9 @@ pub fn compose(ms: &Vec<Manifold>) -> Result<Manifold, String> {
     Manifold::new(&ps, &ts)
 }
 
-pub fn fractal(
-    hole : &Manifold,
-    holes: &mut Vec<Manifold>,
+pub fn fractal<S: Clone + Send + Sync + Debug + PartialEq>(
+    hole : &Manifold<S>,
+    holes: &mut Vec<Manifold<S>>,
     x: f64,
     y: f64,
     w: f64,

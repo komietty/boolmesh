@@ -1,6 +1,7 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
+use std::fmt::Debug;
 use crate::{Manifold, Half, Real, Vec3};
 use crate::bounds::{BBox, Query};
 use super::kernel01::intersect;
@@ -72,9 +73,9 @@ impl<'a> Kernel12<'a> {
     }
 }
 
-pub fn intersect12 (
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn intersect12<S: Clone + Send + Debug + Sync + PartialEq> (
+    mp: &Manifold<S>,
+    mq: &Manifold<S>,
     p1q2: &mut Vec<[usize; 2]>,
     expand: Real,
     fwd: bool

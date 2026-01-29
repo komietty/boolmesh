@@ -6,7 +6,7 @@ use std::time::Instant;
 use bevy::prelude::*;
 use bevy::pbr::wireframe::{WireframePlugin, Wireframe, WireframeColor};
 use bevy::asset::RenderAssetUsages;
-use bevy::render::mesh::PrimitiveTopology;
+use bevy::mesh::PrimitiveTopology;
 use bevy::color::palettes::css::*;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use boolmesh::prelude::*;
@@ -34,7 +34,7 @@ fn setup(
 ) {
     let now = Instant::now();
 
-    let num = 4;
+    let num = 3;
     let res = menger_sponge(num);
 
     println!(">>>>>>>>>>>>>> Compute a menger sponge of level {}, elapsed time: {:?}", num, now.elapsed());
@@ -70,7 +70,7 @@ fn setup(
     ));
 }
 
-pub fn menger_sponge(n: usize) -> Manifold {
+pub fn menger_sponge(n: usize) -> Manifold<()> {
     let res = generate_cube().unwrap();
     let mut holes = vec![];
     fractal(&res, &mut holes, 0., 0., 1., 1, n);

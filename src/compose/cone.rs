@@ -2,15 +2,16 @@
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
 use std::f64::consts::PI;
+use std::fmt::Debug;
 use crate::{Manifold, Vec3, Real, compute_orthogonal};
 use crate::common::Vec3u;
 
-pub fn generate_cone(
+pub fn generate_cone<S: Clone + Send + Sync + Debug + PartialEq>(
     apex: Vec3,
     center: Vec3,
     radius: Real,
     divide: usize,
-) -> Result<Manifold, String> {
+) -> Result<Manifold<S>, String> {
     let d = (PI * 2. / divide as f64) as Real;
     let n = (center - apex).normalize();
     let b1 = compute_orthogonal(n);
@@ -29,5 +30,5 @@ pub fn generate_cone(
 
     ps.push(apex);
     ps.push(center);
-    Manifold::new_impl(ps, ts, None, None)
+    Manifold::new_impl(ps, ts, vec![], None, None)
 }
