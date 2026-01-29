@@ -14,7 +14,6 @@ mod boolean45;
 mod compose;
 mod tests;
 
-use std::fmt::Debug;
 use crate::boolean03::boolean03;
 use crate::boolean45::boolean45;
 use crate::simplification::simplify_topology;
@@ -23,6 +22,9 @@ use crate::common::*;
 use crate::manifold::*;
 
 pub use crate::common::{Real, Vec2, Vec3, Vec4, Mat3, K_PRECISION};
+
+pub trait Data: Clone + Send + Sync + std::fmt::Debug + PartialEq {}
+impl<T> Data for T where T: Clone + Send + Sync + std::fmt::Debug + PartialEq {}
 
 pub mod prelude {
     pub use crate::common::OpType;
@@ -41,11 +43,11 @@ pub mod prelude {
     };
 }
 
-pub fn compute_boolean<S: Clone + Send + Sync + Debug + PartialEq>(
-    mp: &Manifold<S>,
-    mq: &Manifold<S>,
+pub fn compute_boolean<T: Data>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     op: OpType,
-) -> Result<Manifold<S>, String> {
+) -> Result<Manifold<T>, String> {
     let eps = mp.eps.max(mq.eps);
     let tol = mp.tol.max(mq.tol);
 
@@ -70,6 +72,12 @@ pub fn compute_boolean<S: Clone + Send + Sync + Debug + PartialEq>(
     );
 
     let mut inh = vec![];
+    let mut idx = vec![];
+
+    for h in trg.hs.chunks(3) {
+        idx.push(Vec3u::new(h[0].tail, h[1].tail, h[2].tail));
+    }
+
     if !mp.inh.is_empty() && !mq.inh.is_empty() {
         for r in trg.rs.iter() {
             if r.mid == 0 { inh.push(mp.inh[r.fid].clone()) }
@@ -77,13 +85,7 @@ pub fn compute_boolean<S: Clone + Send + Sync + Debug + PartialEq>(
         }
     }
 
-    Manifold::new_impl(
-        b45.ps,
-        trg.hs.chunks(3).map(|hs| Vec3u::new(hs[0].tail, hs[1].tail, hs[2].tail)).collect(),
-        inh,
-        Some(eps),
-        Some(tol)
-    )
+    Manifold::new_impl(b45.ps, idx, inh, Some(eps), Some(tol))
 }
 
 

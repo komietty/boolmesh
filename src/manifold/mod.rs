@@ -10,7 +10,7 @@ use std::fmt::Debug;
 use bounds::BBox;
 use hmesh::Hmesh;
 use collider::{morton_code, MortonCollider, K_NO_CODE};
-use crate::{Tref, Half, Real, Vec3, Vec2u, Vec3u, K_PRECISION, next_of, Mat3};
+use crate::{Data, Mat3, Tref, Half, Real, Vec3, Vec3u, K_PRECISION, next_of};
 #[cfg(feature = "rayon")] use rayon::prelude::*;
 
 
@@ -32,7 +32,7 @@ pub struct Manifold<S> {
     pub coplanar: Vec<i32>,       // indices of coplanar faces
 }
 
-impl<S: Clone + Send + Sync + Debug + PartialEq> Manifold<S> {
+impl<T: Data> Manifold<T> {
     pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> {
         Self::new_impl(
             pos.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect(),
@@ -44,7 +44,7 @@ impl<S: Clone + Send + Sync + Debug + PartialEq> Manifold<S> {
     pub fn new_impl(
         ps : Vec<Vec3>,
         idx: Vec<Vec3u>,
-        inh: Vec<S>,
+        inh: Vec<T>,
         eps: Option<Real>,
         tol: Option<Real>,
     ) -> Result<Self, String> {
@@ -128,10 +128,7 @@ impl<S: Clone + Send + Sync + Debug + PartialEq> Manifold<S> {
         *self = Manifold::new_impl(p, self.get_indices(), self.inh.clone(), None, None).unwrap();
     }
 
-    pub fn set_inheritances(
-        &mut self,
-        val: Vec<S>
-    ) {
+    pub fn set_inheritances(&mut self, val: Vec<T>) {
         *self = Manifold::new_impl(
             self.ps.clone(),
             self.get_indices(),
@@ -182,10 +179,10 @@ fn compute_face_morton(
     (bbs, mts)
 }
 
-fn sort_faces<S: Clone + Send + Sync + Debug + PartialEq>(
+fn sort_faces<T: Data>(
     pos: &[Vec3],
     idx: &[Vec3u],
-    inh: &mut Vec<S>,
+    inh: &mut Vec<T>,
     face_bboxes: &mut Vec<BBox>,
     face_morton: &mut Vec<u32>
 ) -> Result<Hmesh, String> {
@@ -277,15 +274,8 @@ pub fn cleanup_unused_verts(
 
     new2old.truncate(nv);
 
-    let mut rs_ = vec![];
-    for i in 0..hs.len() / 3 {
-        let j = i * 3;
-        if hs[j].pair().is_none() { continue; }
-        rs_.push(rs[i].clone());
-    }
-
     *ps = new2old.iter().map(|&i| ps[i]).collect();
+    *rs = hs.chunks(3).enumerate().filter_map(|(i, t)| t[0].pair().map(|_| rs[i].clone())).collect();
     *hs = hs.iter().filter(|h| h.pair().is_some()).cloned().collect();
-    *rs = rs_;
 }
 

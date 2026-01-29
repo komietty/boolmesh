@@ -3,8 +3,7 @@
 
 use std::mem;
 use std::collections::HashMap;
-use std::fmt::Debug;
-use crate::{Manifold, Real, Vec3, Half, Tref, face_of};
+use crate::{Data, Manifold, Real, Vec3, Half, Tref, face_of};
 use crate::boolean03::Boolean03;
 use crate::bounds::BBox;
 use crate::OpType;
@@ -41,9 +40,9 @@ fn exclusive_scan(input: &[i32], output: &mut [i32], offset: i32) {
     }
 }
 
-fn size_output<S: Clone + Send + Sync + Debug + PartialEq>(
-    mp: &Manifold<S>,
-    mq: &Manifold<S>,
+fn size_output<T: Data>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     i03: &[i32],
     i30: &[i32],
     i12: &[i32],
@@ -326,9 +325,9 @@ pub struct Boolean45 {
     pub nv_from_q: usize,
 }
 
-pub fn boolean45<S: Clone + Send + Sync + Debug + PartialEq>(
-    mp: &Manifold<S>,
-    mq: &Manifold<S>,
+pub fn boolean45<T: Data>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     b03: &Boolean03,
     op: &OpType
 ) -> Boolean45 {

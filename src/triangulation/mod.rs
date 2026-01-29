@@ -6,9 +6,8 @@ pub mod flat_tree;
 pub mod tri_halfs;
 
 use std::collections::{BTreeMap, VecDeque};
-use std::fmt::Debug;
 use crate::boolean45::Boolean45;
-use crate::{Manifold, Vec2, Vec3, Vec3u, Half, Tref, get_aa_proj_matrix, compute_aa_proj, is_ccw_3d, Real};
+use crate::{Data, Real, Manifold, Vec2, Vec3, Vec3u, Half, Tref, get_aa_proj_matrix, compute_aa_proj, is_ccw_3d};
 use crate::triangulation::ear_clip::EarClip;
 use crate::triangulation::tri_halfs::tri_halfs_single;
 #[cfg(feature = "rayon")] use rayon::prelude::*;
@@ -20,9 +19,9 @@ pub struct Triangulation {
     pub ns: Vec<Vec3>,
 }
 
-pub fn triangulate<S: Clone + Send + Sync + Debug + PartialEq>(
-    mp: &Manifold<S>,
-    mq: &Manifold<S>,
+pub fn triangulate<T: Data>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     b45: &Boolean45,
     eps: Real,
 ) -> Result<Triangulation, String> {
@@ -198,9 +197,9 @@ pub struct Pt {
     pub idx: usize
 }
 
-fn update_reference<S: Clone + Send + Sync + Debug + PartialEq>(
-    mp: &Manifold<S>,
-    mq: &Manifold<S>,
+fn update_reference<T: Data>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     rs: &mut[Tref],
 ) {
     for r in rs.iter_mut() {

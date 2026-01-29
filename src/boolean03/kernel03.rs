@@ -1,14 +1,13 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use std::fmt::Debug;
 use super::kernel02::Kernel02;
 use crate::bounds::{BPos, Query};
-use crate::{Real, Vec2, Manifold};
+use crate::{Data, Real, Vec2, Manifold};
 
-pub fn winding03<S: Clone + Send + Debug + Sync + PartialEq>(
-    mp: &Manifold<S>,
-    mq: &Manifold<S>,
+pub fn winding03<T: Data>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     expand: Real,
     fwd: bool
 ) -> Vec<i32> {

@@ -1,10 +1,9 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use std::fmt::Debug;
-use crate::manifold::Manifold;
+use crate::{Data, Manifold};
 
-pub fn generate_cube<S: Clone + Send + Sync + Debug + PartialEq>() -> Result<Manifold<S>, String> {
+pub fn generate_cube<T: Data>() -> Result<Manifold<T>, String> {
     let ps = [
         -0.5, -0.5, -0.5,
         -0.5, -0.5,  0.5,
