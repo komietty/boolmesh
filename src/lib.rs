@@ -71,21 +71,21 @@ pub fn compute_boolean<T: Data>(
         &mut trg.rs
     );
 
-    let mut inh = vec![];
+    let mut var = vec![];
     let mut idx = vec![];
 
     for h in trg.hs.chunks(3) {
         idx.push(Vec3u::new(h[0].tail, h[1].tail, h[2].tail));
     }
 
-    if !mp.inh.is_empty() && !mq.inh.is_empty() {
+    if !mp.var.is_empty() && !mq.var.is_empty() {
         for r in trg.rs.iter() {
-            if r.mid == 0 { inh.push(mp.inh[r.fid].clone()) }
-            else          { inh.push(mq.inh[r.fid].clone()) }
+            if r.mid == 0 { var.push(mp.var[r.fid].clone()) }
+            else          { var.push(mq.var[r.fid].clone()) }
         }
     }
 
-    Manifold::new_impl(b45.ps, idx, inh, Some(eps), Some(tol))
+    Manifold::new_impl(b45.ps, idx, var, Some(eps), Some(tol))
 }
 
 

@@ -4,7 +4,7 @@
 use crate::{Data, Manifold};
 
 pub fn generate_cube<T: Data>() -> Result<Manifold<T>, String> {
-    let ps = [
+    let ps: [f64; 24] = [
         -0.5, -0.5, -0.5,
         -0.5, -0.5,  0.5,
         -0.5,  0.5, -0.5,
@@ -15,7 +15,7 @@ pub fn generate_cube<T: Data>() -> Result<Manifold<T>, String> {
         0.5,  0.5,  0.5
     ];
 
-    let ts = [
+    let ts: [usize; 36] = [
         1, 0, 4, 2, 4, 0,
         1, 3, 0, 3, 1, 5,
         3, 2, 0, 3, 7, 2,
@@ -23,5 +23,5 @@ pub fn generate_cube<T: Data>() -> Result<Manifold<T>, String> {
         6, 4, 2, 7, 6, 2,
         7, 3, 5, 7, 5, 6
     ];
-    Manifold::new(&ps, &ts)
+    Manifold::new(&ps[..], &ts[..])
 }

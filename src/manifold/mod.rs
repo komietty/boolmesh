@@ -13,10 +13,8 @@ use collider::{morton_code, MortonCollider, K_NO_CODE};
 use crate::{Data, Mat3, Tref, Half, Real, Vec3, Vec3u, K_PRECISION, next_of};
 #[cfg(feature = "rayon")] use rayon::prelude::*;
 
-
-
 #[derive(Clone, Debug)]
-pub struct Manifold<S> {
+pub struct Manifold<T> {
     pub ps: Vec<Vec3>,            // positions
     pub hs: Vec<Half>,            // halfedges
     pub nv: usize,                // number of vertices
@@ -24,7 +22,7 @@ pub struct Manifold<S> {
     pub nh: usize,                // number of halfedges
     pub eps: Real,                // epsilon
     pub tol: Real,                // tolerance
-    pub inh: Vec<S>,              //
+    pub var: Vec<T>,              // variable on the mfd
     pub bounding_box: BBox,       //
     pub face_normals: Vec<Vec3>,  //
     pub vert_normals: Vec<Vec3>,  //
@@ -33,25 +31,22 @@ pub struct Manifold<S> {
 }
 
 impl<T: Data> Manifold<T> {
-    pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> {
-        Self::new_impl(
-            pos.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect(),
-            idx.chunks(3).map(|i| Vec3u::new(i[0], i[1], i[2])).collect(),
-            vec![], None, None
-        )
+    pub fn new<P: IntoVec3f, I: IntoVec3u>(ps: P, ts: I) -> Result<Self, String> {
+        Self::new_impl(ps, ts, vec![], None, None)
     }
 
-    pub fn new_impl(
-        ps : Vec<Vec3>,
-        idx: Vec<Vec3u>,
-        inh: Vec<T>,
+    pub fn new_impl<P: IntoVec3f, I: IntoVec3u>(
+        ps: P,
+        ts: I,
+    mut var: Vec<T>,
         eps: Option<Real>,
         tol: Option<Real>,
     ) -> Result<Self, String> {
+        let ps = ps.into_vec3f();
+        let ts = ts.into_vec3u();
         let bb = BBox::new(None, &ps);
-        let (mut f_bb, mut f_mt) = compute_face_morton(&ps, &idx, &bb);
-        let mut inh_ = inh.clone();
-        let hm = sort_faces(&ps, &idx, &mut inh_, &mut f_bb, &mut f_mt)?;
+        let (mut f_bb, mut f_mt) = compute_face_morton(&ps, &ts, &bb);
+        let hm = sort_faces(&ps, &ts, &mut var, &mut f_bb, &mut f_mt)?;
         let hs = hm.half.iter().map(|&i| Half::new(hm.tail[i], hm.head[i], hm.twin[i])).collect::<Vec<_>>();
 
         let mut e = K_PRECISION * bb.scale();
@@ -70,7 +65,7 @@ impl<T: Data> Manifold<T> {
             bounding_box: bb,
             vert_normals: hm.vns,
             face_normals: hm.fns,
-            inh: inh_,
+            var,
             eps,
             tol,
             collider,
@@ -81,18 +76,14 @@ impl<T: Data> Manifold<T> {
         Ok(mfd)
     }
 
-    pub fn get_indices(&self) -> Vec<Vec3u> {
-        self.hs.chunks(3).map(|cs| Vec3u::new(cs[0].tail, cs[1].tail, cs[2].tail)).collect()
-    }
-
-    pub fn set_epsilon(&mut self, min_epsilon: Real, use_single: bool) {
-        let scl = self.bounding_box.scale();
-        let mut e = min_epsilon.max(K_PRECISION * scl);
-        e = if e.is_finite() { e } else { -1. };
-        let t = if use_single { e.max(Real::EPSILON * scl) } else { e };
-        self.eps = e;
-        self.tol = self.tol.max(t);
-    }
+    //fn set_epsilon(&mut self, min_epsilon: Real, use_single: bool) {
+    //    let scl = self.bounding_box.scale();
+    //    let mut e = min_epsilon.max(K_PRECISION * scl);
+    //    e = if e.is_finite() { e } else { -1. };
+    //    let t = if use_single { e.max(Real::EPSILON * scl) } else { e };
+    //    self.eps = e;
+    //    self.tol = self.tol.max(t);
+    //}
 
     pub fn is_manifold(&self) -> bool {
         self.hs.iter().enumerate().all(|(i, h)| {
@@ -113,30 +104,30 @@ impl<T: Data> Manifold<T> {
 
     pub fn translate(&mut self, x: f64, y: f64, z: f64) {
         let t = Vec3::new(x as Real, y as Real, z as Real);
-        let p = self.ps.iter().map(|p| *p + t).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), self.inh.clone(), None, None).unwrap();
+        let p = self.ps.iter().map(|p| *p + t).collect::<Vec<_>>();
+        let i = self.hs.iter().map(|h| h.tail).collect::<Vec<_>>();
+        *self = Manifold::new_impl(p, &i, self.var.clone(), None, None).unwrap();
     }
 
     pub fn rotate(&mut self, x: f64, y: f64, z: f64) {
         let r = Mat3::from_euler(glam::EulerRot::XYZ, x as Real, y as Real, z as Real);
-        let p = self.ps.iter().map(|p| r * *p).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), self.inh.clone(), None, None).unwrap();
+        let p = self.ps.iter().map(|p| r * *p).collect::<Vec<_>>();
+        let i = self.hs.iter().map(|h| h.tail).collect::<Vec<_>>();
+        *self = Manifold::new_impl(p, &i, self.var.clone(), None, None).unwrap();
     }
 
     pub fn scale(&mut self, x: f64, y: f64, z: f64) {
-        let p = self.ps.iter().map(|p| Vec3::new(p.x * x as Real, p.y * y as Real, p.z * z as Real)).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), self.inh.clone(), None, None).unwrap();
+        let p = self.ps.iter().map(|p| Vec3::new(p.x * x as Real, p.y * y as Real, p.z * z as Real)).collect::<Vec<_>>();
+        let i = self.hs.iter().map(|h| h.tail).collect::<Vec<_>>();
+        *self = Manifold::new_impl(p, &i, self.var.clone(), None, None).unwrap();
     }
 
     pub fn set_inheritances(&mut self, val: Vec<T>) {
         *self = Manifold::new_impl(
             self.ps.clone(),
-            self.get_indices(),
-            val,
-            None, None
-        ).unwrap();
+            &self.hs.iter().map(|h| h.tail).collect::<Vec<_>>(),
+            val, None, None).unwrap();
     }
-
 }
 
 fn compute_face_morton(
@@ -182,7 +173,7 @@ fn compute_face_morton(
 fn sort_faces<T: Data>(
     pos: &[Vec3],
     idx: &[Vec3u],
-    inh: &mut Vec<T>,
+    var: &mut Vec<T>,
     face_bboxes: &mut Vec<BBox>,
     face_morton: &mut Vec<u32>
 ) -> Result<Hmesh, String> {
@@ -190,7 +181,7 @@ fn sort_faces<T: Data>(
     map.sort_by_key(|&i| face_morton[i]);
     *face_bboxes = map.iter().map(|&i| face_bboxes[i].clone()).collect::<Vec<_>>();
     *face_morton = map.iter().map(|&i| face_morton[i]).collect::<Vec<_>>();
-    if !inh.is_empty() { *inh = map.iter().map(|&i| inh[i].clone()).collect(); }
+    if !var.is_empty() { *var = map.iter().map(|&i| var[i].clone()).collect(); }
     Hmesh::new(pos, &map.iter().map(|&i| idx[i]).collect::<Vec<_>>())
 }
 
@@ -278,4 +269,34 @@ pub fn cleanup_unused_verts(
     *rs = hs.chunks(3).enumerate().filter_map(|(i, t)| t[0].pair().map(|_| rs[i].clone())).collect();
     *hs = hs.iter().filter(|h| h.pair().is_some()).cloned().collect();
 }
+
+
+pub trait IntoVec3f { fn into_vec3f(self) -> Vec<Vec3>;  }
+pub trait IntoVec3u { fn into_vec3u(self) -> Vec<Vec3u>; }
+
+impl IntoVec3f for &[f32]          { fn into_vec3f(self) -> Vec<Vec3> { self.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect() }}
+impl IntoVec3f for &[f64]          { fn into_vec3f(self) -> Vec<Vec3> { self.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect() }}
+impl IntoVec3f for &[[f32; 3]]     { fn into_vec3f(self) -> Vec<Vec3> { self.iter().map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect() }}
+impl IntoVec3f for &[[f64; 3]]     { fn into_vec3f(self) -> Vec<Vec3> { self.iter().map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect() }}
+impl IntoVec3f for &Vec<[f32; 3]>  { fn into_vec3f(self) -> Vec<Vec3> { self.into_iter().map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect() }}
+impl IntoVec3f for &Vec<[f64; 3]>  { fn into_vec3f(self) -> Vec<Vec3> { self.into_iter().map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect() }}
+impl IntoVec3f for &Vec<f32>       { fn into_vec3f(self) -> Vec<Vec3> { self.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect() }}
+impl IntoVec3f for &Vec<f64>       { fn into_vec3f(self) -> Vec<Vec3> { self.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect() }}
+impl IntoVec3f for &[Vec3]         { fn into_vec3f(self) -> Vec<Vec3> { self.to_vec() } }
+impl IntoVec3f for Vec<Vec3>       { fn into_vec3f(self) -> Vec<Vec3> { self }}
+
+impl IntoVec3u for &[u32]           { fn into_vec3u(self) -> Vec<Vec3u> { self.chunks(3).map(|p| Vec3u::new(p[0] as usize, p[1] as usize, p[2] as usize)).collect() }}
+impl IntoVec3u for &[u64]           { fn into_vec3u(self) -> Vec<Vec3u> { self.chunks(3).map(|p| Vec3u::new(p[0] as usize, p[1] as usize, p[2] as usize)).collect() }}
+impl IntoVec3u for &[usize]         { fn into_vec3u(self) -> Vec<Vec3u> { self.chunks(3).map(|p| Vec3u::new(p[0], p[1], p[2])).collect() }}
+impl IntoVec3u for &[[u32; 3]]      { fn into_vec3u(self) -> Vec<Vec3u> { self.iter().map(|p| Vec3u::new(p[0] as usize, p[1] as usize, p[2] as usize)).collect() }}
+impl IntoVec3u for &[[u64; 3]]      { fn into_vec3u(self) -> Vec<Vec3u> { self.iter().map(|p| Vec3u::new(p[0] as usize, p[1] as usize, p[2] as usize)).collect() }}
+impl IntoVec3u for &[[usize; 3]]    { fn into_vec3u(self) -> Vec<Vec3u> { self.iter().map(|p| Vec3u::new(p[0], p[1], p[2])).collect() } }
+impl IntoVec3u for &Vec<[u32; 3]>   { fn into_vec3u(self) -> Vec<Vec3u> { self.into_iter().map(|p| Vec3u::new(p[0] as usize, p[1] as usize, p[2] as usize)).collect() }}
+impl IntoVec3u for &Vec<[u64; 3]>   { fn into_vec3u(self) -> Vec<Vec3u> { self.into_iter().map(|p| Vec3u::new(p[0] as usize, p[1] as usize, p[2] as usize)).collect() }}
+impl IntoVec3u for &Vec<[usize; 3]> { fn into_vec3u(self) -> Vec<Vec3u> { self.into_iter().map(|p| Vec3u::new(p[0], p[1], p[2])).collect() } }
+impl IntoVec3u for &Vec<u32>        { fn into_vec3u(self) -> Vec<Vec3u> { self.chunks(3).map(|p| Vec3u::new(p[0] as usize, p[1] as usize, p[2] as usize)).collect() } }
+impl IntoVec3u for &Vec<u64>        { fn into_vec3u(self) -> Vec<Vec3u> { self.chunks(3).map(|p| Vec3u::new(p[0] as usize, p[1] as usize, p[2] as usize)).collect() } }
+impl IntoVec3u for &Vec<usize>      { fn into_vec3u(self) -> Vec<Vec3u> { self.chunks(3).map(|p| Vec3u::new(p[0], p[1], p[2])).collect() } }
+impl IntoVec3u for &[Vec3u]         { fn into_vec3u(self) -> Vec<Vec3u> { self.to_vec() } }
+impl IntoVec3u for Vec<Vec3u>       { fn into_vec3u(self) -> Vec<Vec3u> { self } }
 

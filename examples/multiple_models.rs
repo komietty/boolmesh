@@ -39,7 +39,7 @@ fn setup(
     let mut mfs: Vec<Manifold<()>> = vec![];
     for m in vec![&m0[0].mesh, &m1[0].mesh] {
         mfs.push(Manifold::new(
-            &m.positions.iter().map(|&v| v as f64).collect::<Vec<_>>(),
+            &m.positions,
             &m.indices.iter().map(|&v| v as usize).collect::<Vec<_>>(),
         ).unwrap());
     }
