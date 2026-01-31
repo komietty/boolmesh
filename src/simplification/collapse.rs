@@ -85,10 +85,9 @@ pub fn collapse_edge(
                 let tr2 = tr0;
                 tr0 = &rs[hid / 3];
                 if !r_curr.same_face(tr0) { return false; }
-                if tr0.mid != tr2.mid ||
-                   tr0.fid != tr2.fid ||
-                   n_pair.dot(*n_curr) < -0.5 {
-                    // Restrict collapse to co-linear edges when the edge separates faces or the edge is sharp.
+                if tr0.mid != tr2.mid || n_pair.dot(*n_curr) < -0.5 {
+                    // Originally it was "tr0.mid != tr2.mid || tr0.fid != tr2.fid ||...", but seems ok to ignore.
+                    // Restrict collapse to co-linear edges when the edge separates some faces or the edge is sharp.
                     // This ensures large shifts are not introduced parallel to the tangent plane.
                     if ccw(&p_prev, &pos_delt, &pos_keep) != 0 { return false; }
                 }
@@ -148,7 +147,9 @@ pub fn collapse_collinear_edges(
     for hid in rec {
         if collapse_edge(hs, ps, ns, rs, hid, ep, &mut vec![]) { _flag += 1; }
     }
-    // if _flag > 0 { println!("{} collinear edge collapsed", _flag);}
+
+    #[cfg(feature = "verbose")]
+    if _flag > 0 { println!("{} collinear edge collapsed", _flag);}
 }
 
 pub fn collapse_short_edges(
@@ -168,6 +169,8 @@ pub fn collapse_short_edges(
             if collapse_edge(hs, ps, ns, rs, hid, ep, &mut vec![]) { flag += 1; }
         }
         if flag == 0 { break; }
-        //else { println!("{} short edges collapsed", flag);}
+
+        #[cfg(feature = "verbose")]
+        println!("{} short edges collapsed", flag);
     }
 }

@@ -14,12 +14,12 @@ pub use sphere::*;
 pub use torus::*;
 pub use cylinder::*;
 
-use crate::{Manifold, Vec3, K_PRECISION};
+use crate::{Data, Manifold, Vec3, K_PRECISION};
 use crate::common::{compute_aa_proj, get_aa_proj_matrix, Vec3u};
 use crate::triangulation::ear_clip::EarClip;
 use crate::triangulation::Pt;
 
-pub fn extrude(pts: &[Vec3], offset: Vec3) -> Result<Manifold, String> {
+pub fn extrude<T: Data>(pts: &[Vec3], offset: Vec3) -> Result<Manifold<T>, String> {
     let n = Vec3::new(0., 0., 1.);
     let proj = get_aa_proj_matrix(&n);
     let poly = pts.iter().enumerate().map(|(i, p)| Pt {pos: compute_aa_proj(&proj, p), idx: i}).collect::<Vec<_>>();
@@ -37,10 +37,10 @@ pub fn extrude(pts: &[Vec3], offset: Vec3) -> Result<Manifold, String> {
         oft_ts.push(Vec3u::new(i, j, i + n));
         oft_ts.push(Vec3u::new(i + n, j, j + n));
     }
-    Manifold::new_impl(oft_ps, oft_ts, None, None)
+    Manifold::new(oft_ps, oft_ts, None, None, None)
 }
 
-pub fn compose(ms: &Vec<Manifold>) -> Result<Manifold, String> {
+pub fn compose(ms: &Vec<Manifold<()>>) -> Result<Manifold<()>, String> {
     let mut ps = vec![];
     let mut ts = vec![];
     let mut offset = 0;
@@ -53,12 +53,12 @@ pub fn compose(ms: &Vec<Manifold>) -> Result<Manifold, String> {
         }
         offset += m.nv;
     }
-    Manifold::new(&ps, &ts)
+    Manifold::new(&ps, &ts, None, None, None)
 }
 
 pub fn fractal(
-    hole : &Manifold,
-    holes: &mut Vec<Manifold>,
+    hole : &Manifold<()>,
+    holes: &mut Vec<Manifold<()>>,
     x: f64,
     y: f64,
     w: f64,
