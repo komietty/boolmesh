@@ -29,5 +29,5 @@ pub fn generate_cone<T: Data>(
 
     ps.push(apex);
     ps.push(center);
-    Manifold::new_impl(ps, ts, vec![], None, None)
+    Manifold::new(ps, ts, None, None, None)
 }

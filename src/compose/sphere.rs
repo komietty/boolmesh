@@ -42,7 +42,7 @@ pub fn generate_uv_sphere<T: Data>(
         }
     }
 
-    Manifold::new_impl(ps, ts, vec![], None, None)
+    Manifold::new(ps, ts, None, None, None)
 }
 
 pub fn generate_icosphere(subdivisions: u32) -> Result<Manifold<()>, String> {
@@ -120,5 +120,5 @@ pub fn generate_icosphere(subdivisions: u32) -> Result<Manifold<()>, String> {
         ts = ts_;
     }
 
-    Manifold::new_impl(ps, ts, vec![], None, None)
+    Manifold::new(ps, ts, None, None, None)
 }

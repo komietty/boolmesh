@@ -34,7 +34,7 @@ fn setup(
 ) {
     let now = Instant::now();
 
-    let num = 3;
+    let num = 4;
     let res = menger_sponge(num);
 
     println!(">>>>>>>>>>>>>> Compute a menger sponge of level {}, elapsed time: {:?}", num, now.elapsed());
@@ -92,7 +92,7 @@ pub fn menger_sponge(n: usize) -> Manifold<()> {
             *p = v;
 
         }
-        Manifold::new(ps, &holes_z.hs.iter().map(|h| h.tail).collect::<Vec<_>>()).unwrap()
+        Manifold::new(ps, holes_z.hs.iter().map(|h| h.tail).collect::<Vec<_>>(), None, None, None).unwrap()
     };
 
     let holes_x = rot(PI / 2., 0., 0.);

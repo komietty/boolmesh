@@ -23,5 +23,5 @@ pub fn generate_cube<T: Data>() -> Result<Manifold<T>, String> {
         6, 4, 2, 7, 6, 2,
         7, 3, 5, 7, 5, 6
     ];
-    Manifold::new(&ps[..], &ts[..])
+    Manifold::new(&ps[..], &ts[..], None, None, None)
 }

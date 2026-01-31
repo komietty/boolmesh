@@ -35,8 +35,8 @@ fn setup(
     let mut mfd2 = generate_cube().unwrap();
     let idcs1 = mfd1.hs.chunks(3).map(|cs| [cs[0].tail, cs[1].tail, cs[2].tail]).collect::<Vec<_>>();
 
-    mfd0.set_inheritances((0..mfd0.nf).map(|i| Vec2::new(1., i as f32)).collect::<Vec<_>>());
-    mfd1.set_inheritances((0..mfd1.nf).map(|i| {
+    mfd0.set_variable((0..mfd0.nf).map(|i| Vec2::new(1., i as f32)).collect::<Vec<_>>());
+    mfd1.set_variable((0..mfd1.nf).map(|i| {
         let idcs = idcs1[i];
         let p0 = mfd1.ps[idcs[0]];
         let p1 = mfd1.ps[idcs[1]];
@@ -44,7 +44,7 @@ fn setup(
         Vec2::new(2., (p0 + p1 + p2).y as f32 / 3. + 0.5)
     }).collect::<Vec<_>>());
 
-    mfd2.set_inheritances((0..mfd2.nf).map(|i| Vec2::new(3., i as f32)).collect::<Vec<_>>());
+    mfd2.set_variable((0..mfd2.nf).map(|i| Vec2::new(3., i as f32)).collect::<Vec<_>>());
     mfd1.translate(0.5, 0., 0.25);
     mfd2.translate(-0.5, 0.5, 0.5);
 
@@ -68,7 +68,7 @@ fn setup(
         let p1  = res.ps[hs[1].tail];
         let p2  = res.ps[hs[2].tail];
         let n   = res.face_normals[fid];
-        let var = res.var[fid];
+        let var = res.variable.as_ref().unwrap()[fid];
         let mut c = [0., 0., 0., 1.];
         if var.x as usize == 1 { c[0] = 1.; }
         if var.x as usize == 2 { c[1] = var.y as f32; }

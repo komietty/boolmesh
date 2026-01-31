@@ -13,12 +13,13 @@ mod boolean03;
 mod boolean45;
 mod compose;
 mod tests;
-
+mod cleanup;
 use crate::boolean03::boolean03;
 use crate::boolean45::boolean45;
 use crate::simplification::simplify_topology;
 use crate::triangulation::triangulate;
 use crate::common::*;
+use crate::cleanup::*;
 use crate::manifold::*;
 
 pub use crate::common::{Real, Vec2, Vec3, Vec4, Mat3, K_PRECISION};
@@ -71,21 +72,22 @@ pub fn compute_boolean<T: Data>(
         &mut trg.rs
     );
 
-    let mut var = vec![];
-    let mut idx = vec![];
-
-    for h in trg.hs.chunks(3) {
-        idx.push(Vec3u::new(h[0].tail, h[1].tail, h[2].tail));
+    let mut var = None;
+    if let (Some(vp), Some(vq)) = (&mp.variable, &mq.variable) {
+        var = Some(
+            trg.rs.iter().map(|r| {
+                if r.mid == 0 { vp[r.fid].clone() }
+                else          { vq[r.fid].clone() }
+            }).collect());
     }
 
-    if !mp.var.is_empty() && !mq.var.is_empty() {
-        for r in trg.rs.iter() {
-            if r.mid == 0 { var.push(mp.var[r.fid].clone()) }
-            else          { var.push(mq.var[r.fid].clone()) }
-        }
-    }
-
-    Manifold::new_impl(b45.ps, idx, var, Some(eps), Some(tol))
+    Manifold::new(
+        b45.ps,
+        trg.hs.iter().map(|h| h.tail).collect::<Vec<_>>(),
+        var,
+        Some(eps),
+        Some(tol)
+    )
 }
 
 

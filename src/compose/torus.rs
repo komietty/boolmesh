@@ -41,5 +41,5 @@ pub fn generate_torus<T: Data>(
         }
     }
 
-    Manifold::new_impl(ps, ts, vec![], None, None)
+    Manifold::new(ps, ts, None, None, None)
 }

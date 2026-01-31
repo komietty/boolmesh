@@ -40,7 +40,8 @@ fn setup(
     for m in vec![&m0[0].mesh, &m1[0].mesh] {
         mfs.push(Manifold::new(
             &m.positions,
-            &m.indices.iter().map(|&v| v as usize).collect::<Vec<_>>(),
+            &m.indices,
+            None, None, None
         ).unwrap());
     }
     mfs.push(compute_boolean(&mfs[0], &mfs[1], OpType::Subtract).unwrap());

@@ -37,7 +37,7 @@ pub fn extrude<T: Data>(pts: &[Vec3], offset: Vec3) -> Result<Manifold<T>, Strin
         oft_ts.push(Vec3u::new(i, j, i + n));
         oft_ts.push(Vec3u::new(i + n, j, j + n));
     }
-    Manifold::new_impl(oft_ps, oft_ts, vec![], None, None)
+    Manifold::new(oft_ps, oft_ts, None, None, None)
 }
 
 pub fn compose(ms: &Vec<Manifold<()>>) -> Result<Manifold<()>, String> {
@@ -53,7 +53,7 @@ pub fn compose(ms: &Vec<Manifold<()>>) -> Result<Manifold<()>, String> {
         }
         offset += m.nv;
     }
-    Manifold::new(&ps, &ts)
+    Manifold::new(&ps, &ts, None, None, None)
 }
 
 pub fn fractal(
