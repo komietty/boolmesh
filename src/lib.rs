@@ -13,15 +13,19 @@ mod boolean03;
 mod boolean45;
 mod compose;
 mod tests;
-
+mod cleanup;
 use crate::boolean03::boolean03;
 use crate::boolean45::boolean45;
 use crate::simplification::simplify_topology;
 use crate::triangulation::triangulate;
 use crate::common::*;
+use crate::cleanup::*;
 use crate::manifold::*;
 
 pub use crate::common::{Real, Vec2, Vec3, Vec4, Mat3, K_PRECISION};
+
+pub trait Data: Clone + Send + Sync + std::fmt::Debug + PartialEq {}
+impl<T> Data for T where T: Clone + Send + Sync + std::fmt::Debug + PartialEq {}
 
 pub mod prelude {
     pub use crate::common::OpType;
@@ -40,11 +44,11 @@ pub mod prelude {
     };
 }
 
-pub fn compute_boolean(
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn compute_boolean<T: Data>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     op: OpType,
-) -> Result<Manifold, String> {
+) -> Result<Manifold<T>, String> {
     let eps = mp.eps.max(mq.eps);
     let tol = mp.tol.max(mq.tol);
 
@@ -64,35 +68,27 @@ pub fn compute_boolean(
 
     cleanup_unused_verts(
         &mut b45.ps,
-        &mut trg.hs
+        &mut trg.hs,
+        &mut trg.rs
     );
 
-    Manifold::new_impl(
+    let mut var = None;
+    if let (Some(vp), Some(vq)) = (&mp.variable, &mq.variable) {
+        var = Some(
+            trg.rs.iter().map(|r| {
+                if r.mid == 0 { vp[r.fid].clone() }
+                else          { vq[r.fid].clone() }
+            }).collect());
+    }
+
+    Manifold::new(
         b45.ps,
-        trg.hs.chunks(3).map(|hs| Vec3u::new(hs[0].tail, hs[1].tail, hs[2].tail)).collect(),
+        trg.hs.iter().map(|h| h.tail).collect::<Vec<_>>(),
+        var,
         Some(eps),
         Some(tol)
     )
 }
-
-//pub fn compute_boolean_from_raw_data(
-//    pos0: &[Real],
-//    idx0: &[usize],
-//    pos1: &[Real],
-//    idx1: &[usize],
-//    op_type: usize
-//) -> Result<Manifold, String>{
-//    let mp = Manifold::new(&pos0, &idx0)?;
-//    let mq = Manifold::new(&pos1, &idx1)?;
-//    let op = match op_type {
-//        0 => OpType::Add,
-//        1 => OpType::Subtract,
-//        2 => OpType::Intersect,
-//        _ => return Err("Invalid op_type".into())
-//    };
-//    compute_boolean(&mp, &mq, op)
-//}
-
 
 
 

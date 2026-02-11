@@ -56,7 +56,6 @@ pub fn next_of(hid: usize) -> usize { let mut i = hid + 1; if i.is_multiple_of(3
 
 #[derive(Clone, Debug, Copy)]
 pub struct Tref {
-    pub oid: usize, // original instance id,
     pub mid: usize, // mesh id
     pub fid: usize, // face id
     pub pid: i32,   // planer id
@@ -65,7 +64,6 @@ pub struct Tref {
 impl Default for Tref {
     fn default() -> Self {
         Self {
-            oid: usize::MAX,
             mid: usize::MAX,
             fid: usize::MAX,
             pid: -1
@@ -132,12 +130,3 @@ pub fn compute_orthogonal(n: Vec3) -> Vec3 {
     else { Vec3::new(0., 1., 0.) };
     n.cross(b).normalize()
 }
-
-/*
-enum CsgNodeType { Union, Intersection, Difference, Leaf }
-trait CsgNode { fn ToLeafNode () { } }
-struct CsgOpNode { }
-struct CsgLeafNode { }
-impl CsgNode for CsgOpNode { fn ToLeafNode () { } }
-impl CsgNode for CsgLeafNode { }
-*/

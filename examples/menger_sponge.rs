@@ -6,7 +6,7 @@ use std::time::Instant;
 use bevy::prelude::*;
 use bevy::pbr::wireframe::{WireframePlugin, Wireframe, WireframeColor};
 use bevy::asset::RenderAssetUsages;
-use bevy::render::mesh::PrimitiveTopology;
+use bevy::mesh::PrimitiveTopology;
 use bevy::color::palettes::css::*;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use boolmesh::prelude::*;
@@ -70,27 +70,29 @@ fn setup(
     ));
 }
 
-pub fn menger_sponge(n: usize) -> Manifold {
+pub fn menger_sponge(n: usize) -> Manifold<()> {
     let res = generate_cube().unwrap();
     let mut holes = vec![];
     fractal(&res, &mut holes, 0., 0., 1., 1, n);
     let holes_z = compose(&holes).unwrap();
 
     let rot = |rx: f64, ry: f64, rz: f64| {
-        let ts = holes_z.hs.iter().map(|h| h.tail).collect::<Vec<_>>();
         let mut ps = holes_z.ps.clone();
-        let x = rx as boolmesh::Real;
-        let y = ry as boolmesh::Real;
-        let z = rz as boolmesh::Real;
-        let r = boolmesh::Mat3::from_euler(glam::EulerRot::XYZ, x, y, z);
-        for p in ps.iter_mut() { *p = r * *p; }
-        let mut flat = vec![];
-        for p in ps {
-            flat.push(if (p.x - 0.5).abs() < 1e-4 { 0.5 } else if (p.x + 0.5).abs() < 1e-4 { -0.5 } else { p.x as f64});
-            flat.push(if (p.y - 0.5).abs() < 1e-4 { 0.5 } else if (p.y + 0.5).abs() < 1e-4 { -0.5 } else { p.y as f64});
-            flat.push(if (p.z - 0.5).abs() < 1e-4 { 0.5 } else if (p.z + 0.5).abs() < 1e-4 { -0.5 } else { p.z as f64});
+        let r = boolmesh::Mat3::from_euler(
+            glam::EulerRot::XYZ,
+            rx as boolmesh::Real,
+            ry as boolmesh::Real,
+            rz as boolmesh::Real
+        );
+        for p in ps.iter_mut() {
+            let mut v = r * *p;
+            v.x = if (v.x - 0.5).abs() < 1e-4 { 0.5 } else if (v.x + 0.5).abs() < 1e-4 { -0.5 } else { v.x };
+            v.y = if (v.y - 0.5).abs() < 1e-4 { 0.5 } else if (v.y + 0.5).abs() < 1e-4 { -0.5 } else { v.y };
+            v.z = if (v.z - 0.5).abs() < 1e-4 { 0.5 } else if (v.z + 0.5).abs() < 1e-4 { -0.5 } else { v.z };
+            *p = v;
+
         }
-        Manifold::new(&flat, &ts).unwrap()
+        Manifold::new(ps, holes_z.hs.iter().map(|h| h.tail).collect::<Vec<_>>(), None, None, None).unwrap()
     };
 
     let holes_x = rot(PI / 2., 0., 0.);

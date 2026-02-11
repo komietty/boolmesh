@@ -10,24 +10,27 @@ mod test_intersection {
     use crate::{OpType, Vec3};
     use crate::Manifold;
 
-    pub fn gen_tet_a() -> Manifold {
+    pub fn gen_tet_a() -> Manifold<()> {
         Manifold::new(
-            &vec![-0.866025, -1., 0.5, 0., -1., -1., 0.866025, -1., 0.5, 0., 1., 0.],
-            &vec![0, 3, 1, 1, 2, 0, 1, 3, 2, 2, 3, 0],
+            [-0.866025, -1., 0.5, 0., -1., -1., 0.866025, -1., 0.5, 0., 1., 0.].as_ref(),
+            [0, 3, 1, 1, 2, 0, 1, 3, 2, 2, 3, 0u32].as_ref(),
+            None, None, None,
         ).unwrap()
     }
 
-    pub fn gen_tet_b() -> Manifold {
+    pub fn gen_tet_b() -> Manifold<()> {
         Manifold::new(
-            &vec![-1., -0.866025, 0.5, -1., 0., -1., -1., 0.866025, 0.5, 1., 0., 0.],
-            &vec![1, 3, 0, 1, 0, 2, 2, 3, 1, 0, 3, 2],
+            [-1., -0.866025, 0.5, -1., 0., -1., -1., 0.866025, 0.5, 1., 0., 0.].as_ref(),
+            [1, 3, 0, 1, 0, 2, 2, 3, 1, 0, 3, 2u32].as_ref(),
+            None, None, None,
         ).unwrap()
     }
 
-    pub fn gen_tet_c() -> Manifold {
+    pub fn gen_tet_c() -> Manifold<()> {
         Manifold::new(
-            &vec![-2., -0.866025, 0.5, -2., -0., -1., -2., 0.866025, 0.5, 0., 0., 0.],
-            &vec![1, 3, 0, 1, 0, 2, 2, 3, 1, 0, 3, 2],
+            [-2., -0.866025, 0.5, -2., -0., -1., -2., 0.866025, 0.5, 0., 0., 0.].as_ref(),
+            [1, 3, 0, 1, 0, 2, 2, 3, 1, 0, 3, 2u32].as_ref(),
+            None, None, None,
         ).unwrap()
     }
 
@@ -263,30 +266,30 @@ mod test_simplification {
         ];
 
         let mut refs = vec![
-            Tref{oid: 0, mid: 1, fid: 0, pid: 3},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 5},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 2},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 2},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 2},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 2},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 2},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 2},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 2},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 2},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 2},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 1},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 0},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 4},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 3},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 1},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 5},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 0},
-            Tref{oid: 0, mid: 1, fid: 0, pid: 4},
-            Tref{oid: 0, mid: 2, fid: 0, pid: 0},
-            Tref{oid: 0, mid: 2, fid: 0, pid: 0},
-            Tref{oid: 0, mid: 2, fid: 0, pid: 3},
-            Tref{oid: 0, mid: 2, fid: 0, pid: 2},
-            Tref{oid: 0, mid: 2, fid: 0, pid: 2},
+            Tref{mid: 1, fid: 0, pid: 3, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 5, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 2, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 2, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 2, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 2, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 2, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 2, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 2, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 2, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 2, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 1, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 0, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 4, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 3, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 1, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 5, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 0, ..Tref::default()},
+            Tref{mid: 1, fid: 0, pid: 4, ..Tref::default()},
+            Tref{mid: 2, fid: 0, pid: 0, ..Tref::default()},
+            Tref{mid: 2, fid: 0, pid: 0, ..Tref::default()},
+            Tref{mid: 2, fid: 0, pid: 3, ..Tref::default()},
+            Tref{mid: 2, fid: 0, pid: 2, ..Tref::default()},
+            Tref{mid: 2, fid: 0, pid: 2, ..Tref::default()},
         ];
 
         collapse_collinear_edges(

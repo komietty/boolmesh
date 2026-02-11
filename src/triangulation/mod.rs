@@ -7,7 +7,7 @@ pub mod tri_halfs;
 
 use std::collections::{BTreeMap, VecDeque};
 use crate::boolean45::Boolean45;
-use crate::{Manifold, Vec2, Vec3, Vec3u, Half, Tref, get_aa_proj_matrix, compute_aa_proj, is_ccw_3d, Real};
+use crate::{Data, Real, Manifold, Vec2, Vec3, Vec3u, Half, Tref, get_aa_proj_matrix, compute_aa_proj, is_ccw_3d};
 use crate::triangulation::ear_clip::EarClip;
 use crate::triangulation::tri_halfs::tri_halfs_single;
 #[cfg(feature = "rayon")] use rayon::prelude::*;
@@ -19,9 +19,9 @@ pub struct Triangulation {
     pub ns: Vec<Vec3>,
 }
 
-pub fn triangulate(
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn triangulate<T: Data>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     b45: &Boolean45,
     eps: Real,
 ) -> Result<Triangulation, String> {
@@ -197,15 +197,14 @@ pub struct Pt {
     pub idx: usize
 }
 
-fn update_reference(
-    mp: &Manifold,
-    mq: &Manifold,
+fn update_reference<T: Data>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     rs: &mut[Tref],
 ) {
     for r in rs.iter_mut() {
         let fid = r.fid;
         let pq  = r.mid == 0;
-        r.fid = 0; // see the original code and it's always -1
         r.pid = if pq { mp.coplanar[fid] } else { mq.coplanar[fid] };
     }
 }

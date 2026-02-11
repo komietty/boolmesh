@@ -6,10 +6,10 @@ pub mod kernel02;
 pub mod kernel11;
 pub mod kernel12;
 pub mod kernel03;
+
 use crate::boolean03::kernel03::winding03;
 use crate::boolean03::kernel12::intersect12;
-use crate::common::{OpType, Vec3};
-use crate::manifold::Manifold;
+use crate::{Data, Manifold, OpType, Vec3};
 
 pub struct Boolean03 {
     pub p1q2: Vec<[usize; 2]>,
@@ -22,9 +22,9 @@ pub struct Boolean03 {
     pub v21: Vec<Vec3>,
 }
 
-pub fn boolean03(
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn boolean03<T: Data>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     op: &OpType,
 ) -> Boolean03 {
     let e = if op == &OpType::Add { 1. } else { -1. };
