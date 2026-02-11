@@ -1,9 +1,9 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use crate::manifold::Manifold;
+use crate::{Var, Manifold};
 
-pub fn generate_cube() -> Result<Manifold, String> {
+pub fn generate_cube<T: Var>() -> Result<Manifold<T>, String> {
     let ps = [
         -0.5, -0.5, -0.5,
         -0.5, -0.5,  0.5,

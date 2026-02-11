@@ -10,6 +10,7 @@ use bevy::render::mesh::PrimitiveTopology;
 use bevy::color::palettes::css::*;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use boolmesh::prelude::*;
+use boolmesh::Var;
 
 #[derive(Component)]
 struct ToggleableMesh;
@@ -35,7 +36,7 @@ fn setup(
     let now = Instant::now();
 
     let num = 4;
-    let res = menger_sponge(num);
+    let res: Manifold<()> = menger_sponge(num);
 
     println!(">>>>>>>>>>>>>> Compute a menger sponge of level {}, elapsed time: {:?}", num, now.elapsed());
 
@@ -70,7 +71,7 @@ fn setup(
     ));
 }
 
-pub fn menger_sponge(n: usize) -> Manifold {
+pub fn menger_sponge<T: Var>(n: usize) -> Manifold<T> {
     let res = generate_cube().unwrap();
     let mut holes = vec![];
     fractal(&res, &mut holes, 0., 0., 1., 1, n);

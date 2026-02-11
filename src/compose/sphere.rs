@@ -3,12 +3,12 @@
 
 use std::collections::HashMap;
 use std::f64::consts::PI;
-use crate::{Manifold, Vec3, Vec3u, Real};
+use crate::{Var, Manifold, Vec3, Vec3u, Real};
 
-pub fn generate_uv_sphere(
+pub fn generate_uv_sphere<T: Var>(
     d0: usize, // sectors
     d1: usize, // stacks
-) -> Result<Manifold, String> {
+) -> Result<Manifold<T>, String> {
     if d0 < 3 || d1 < 2 { return Err("sectors must be >= 3 and stacks must be >= 2".into()); }
 
     let mut ps = vec![];
@@ -42,10 +42,10 @@ pub fn generate_uv_sphere(
         }
     }
 
-    Manifold::new_impl(ps, ts, None, None)
+    Manifold::new_impl(ps, ts, vec![], None, None)
 }
 
-pub fn generate_icosphere(subdivisions: u32) -> Result<Manifold, String> {
+pub fn generate_icosphere<T: Var>(subdivisions: u32) -> Result<Manifold<T>, String> {
     let phi = ((1. + 5.0f32.sqrt()) / 2.) as Real;
 
     let mut ps = vec![
@@ -120,5 +120,5 @@ pub fn generate_icosphere(subdivisions: u32) -> Result<Manifold, String> {
         ts = ts_;
     }
 
-    Manifold::new_impl(ps, ts, None, None)
+    Manifold::new_impl(ps, ts, vec![], None, None)
 }

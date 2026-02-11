@@ -9,12 +9,12 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use bounds::BBox;
 use crate::collider::{morton_code, MortonCollider, K_NO_CODE};
-use crate::{Real, Half, Vec3, Vec3u, K_PRECISION, next_of, Mat3};
+use crate::{Var, Real, Tref, Half, Vec3, Vec3u, Mat3, K_PRECISION, next_of};
 use super::hmesh::Hmesh;
 #[cfg(feature = "rayon")] use rayon::prelude::*;
 
 #[derive(Clone, Debug)]
-pub struct Manifold {
+pub struct Manifold<T> {
     pub ps: Vec<Vec3>,            // positions
     pub hs: Vec<Half>,            // halfedges
     pub nv: usize,                // number of vertices
@@ -25,30 +25,29 @@ pub struct Manifold {
     pub bounding_box: BBox,       //
     pub face_normals: Vec<Vec3>,  //
     pub vert_normals: Vec<Vec3>,  //
-    pub original_idx: Vec<usize>, //
-    pub collider: MortonCollider, //
+    pub variable: Vec<T>,         //
     pub coplanar: Vec<i32>,       // indices of coplanar faces
+    pub collider: MortonCollider, //
 }
 
-impl Manifold {
+impl<T: Var> Manifold<T> {
     pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> {
-        Self::new_impl(
-            pos.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect(),
-            idx.chunks(3).map(|i| Vec3u::new(i[0], i[1], i[2])).collect(),
-            None, None
-        )
+        let ps = pos.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect();
+        let ts = idx.chunks(3).map(|i| Vec3u::new(i[0], i[1], i[2])).collect();
+        Self::new_impl(ps, ts, vec![], None, None)
     }
 
     pub fn new_impl(
         ps : Vec<Vec3>,
-        idx: Vec<Vec3u>,
+        ts : Vec<Vec3u>,
+        var: Vec<T>,
         eps: Option<Real>,
         tol: Option<Real>,
     ) -> Result<Self, String> {
-        let (ps, idx) = dedup_verts(&ps, &idx, 1e-6);
+        let (ps, ts) = dedup_verts(&ps, &ts, 1e-6);
         let bb = BBox::new(None, &ps);
-        let (mut f_bb, mut f_mt) = compute_face_morton(&ps, &idx, &bb);
-        let hm = sort_faces(&ps, &idx, &mut f_bb, &mut f_mt)?;
+        let (mut f_bb, mut f_mt) = compute_face_morton(&ps, &ts, &bb);
+        let hm = sort_faces(&ps, &ts, &mut f_bb, &mut f_mt)?;
         let hs = hm.half.iter().map(|&i| Half::new(hm.tail[i], hm.head[i], hm.twin[i])).collect::<Vec<_>>();
 
         let mut e = K_PRECISION * bb.scale();
@@ -67,11 +66,11 @@ impl Manifold {
             bounding_box: bb,
             vert_normals: hm.vns,
             face_normals: hm.fns,
-            original_idx: vec![],
-            eps,
-            tol,
+            variable: var,
             collider,
             coplanar,
+            eps,
+            tol,
         };
 
         if !mfd.is_manifold() { return Err("The input mesh is not manifold".into()); }
@@ -111,18 +110,18 @@ impl Manifold {
     pub fn translate(&mut self, x: f64, y: f64, z: f64) {
         let t = Vec3::new(x as Real, y as Real, z as Real);
         let p = self.ps.iter().map(|p| *p + t).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
+        *self = Manifold::new_impl(p, self.get_indices(), self.variable.clone(), None, None).unwrap();
     }
 
     pub fn rotate(&mut self, x: f64, y: f64, z: f64) {
         let r = Mat3::from_euler(glam::EulerRot::XYZ, x as Real, y as Real, z as Real);
         let p = self.ps.iter().map(|p| r * *p).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
+        *self = Manifold::new_impl(p, self.get_indices(), self.variable.clone(), None, None).unwrap();
     }
 
     pub fn scale(&mut self, x: f64, y: f64, z: f64) {
         let p = self.ps.iter().map(|p| Vec3::new(p.x * x as Real, p.y * y as Real, p.z * z as Real)).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
+        *self = Manifold::new_impl(p, self.get_indices(), self.variable.clone(), None, None).unwrap();
     }
 }
 
@@ -266,7 +265,8 @@ pub fn dedup_verts(
 
 pub fn cleanup_unused_verts(
     ps: &mut Vec<Vec3>,
-    hs: &mut Vec<Half>
+    hs: &mut Vec<Half>,
+    rs: &mut Vec<Tref>,
 ) {
     let bb = BBox::new(None, ps);
     let mt = ps.iter().map(|p| morton_code(p, &bb)).collect::<Vec<_>>();
@@ -292,6 +292,7 @@ pub fn cleanup_unused_verts(
     new2old.truncate(nv);
 
     *ps = new2old.iter().map(|&i| ps[i]).collect();
+    *rs = hs.chunks(3).enumerate().filter_map(|(i, t)| t[0].pair().map(|_| rs[i].clone())).collect();
     *hs = hs.iter().filter(|h| h.pair().is_some()).cloned().collect();
 }
 

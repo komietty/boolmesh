@@ -36,7 +36,7 @@ fn setup(
     let (m0, _) = tobj::load_obj(obj_path_1, &tobj::LoadOptions { ..Default::default() }).expect("Failed to load the first obj file");
     let (m1, _) = tobj::load_obj(obj_path_2, &tobj::LoadOptions { ..Default::default() }).expect("Failed to load the second obj file");
 
-    let mut mfs = vec![];
+    let mut mfs: Vec<Manifold<()>> = vec![];
     for m in vec![&m0[0].mesh, &m1[0].mesh] {
         mfs.push(Manifold::new(
             &m.positions.iter().map(|&v| v as f64).collect::<Vec<_>>(),

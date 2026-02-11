@@ -7,24 +7,24 @@ mod test_intersection {
     use crate::boolean03::kernel03::winding03;
     use crate::boolean03::kernel12::intersect12;
     use crate::boolean45::boolean45;
-    use crate::{OpType, Vec3};
+    use crate::{Var, OpType, Vec3};
     use crate::Manifold;
 
-    pub fn gen_tet_a() -> Manifold {
+    pub fn gen_tet_a<T: Var>() -> Manifold<T> {
         Manifold::new(
             &vec![-0.866025, -1., 0.5, 0., -1., -1., 0.866025, -1., 0.5, 0., 1., 0.],
             &vec![0, 3, 1, 1, 2, 0, 1, 3, 2, 2, 3, 0],
         ).unwrap()
     }
 
-    pub fn gen_tet_b() -> Manifold {
+    pub fn gen_tet_b<T: Var>() -> Manifold<T> {
         Manifold::new(
             &vec![-1., -0.866025, 0.5, -1., 0., -1., -1., 0.866025, 0.5, 1., 0., 0.],
             &vec![1, 3, 0, 1, 0, 2, 2, 3, 1, 0, 3, 2],
         ).unwrap()
     }
 
-    pub fn gen_tet_c() -> Manifold {
+    pub fn gen_tet_c<T: Var>() -> Manifold<T> {
         Manifold::new(
             &vec![-2., -0.866025, 0.5, -2., -0., -1., -2., 0.866025, 0.5, 0., 0., 0.],
             &vec![1, 3, 0, 1, 0, 2, 2, 3, 1, 0, 3, 2],
@@ -35,8 +35,8 @@ mod test_intersection {
     #[test]
     fn test_tet_sub_inclusion_case(){
         let expand = -1.;
-        let mfd_p = gen_tet_a();
-        let mfd_q = gen_tet_c();
+        let mfd_p: Manifold<()> = gen_tet_a();
+        let mfd_q: Manifold<()> = gen_tet_c();
         let mut p1q2 = vec![];
         let mut p2q1 = vec![];
         let (x12, v12) = intersect12(&mfd_p, &mfd_q, &mut p1q2, expand, true);
@@ -65,8 +65,8 @@ mod test_intersection {
     #[test]
     fn test_tet_sub_penetration_case(){
         let expand = -1.;
-        let mfd_p = gen_tet_a();
-        let mfd_q = gen_tet_b();
+        let mfd_p: Manifold<()> = gen_tet_a();
+        let mfd_q: Manifold<()> = gen_tet_b();
         let mut p1q2 = vec![];
         let mut p2q1 = vec![];
         let (x12, v12) = intersect12(&mfd_p, &mfd_q, &mut p1q2, -1., true);

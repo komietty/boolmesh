@@ -2,14 +2,14 @@
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
 use std::f64::consts::PI;
-use crate::{Manifold, Vec3, Vec3u, Real};
+use crate::{Var, Manifold, Vec3, Vec3u, Real};
 
-pub fn generate_torus(
+pub fn generate_torus<T: Var>(
     r0: f64,   // major radius
     r1: f64,   // minor radius
     d0: usize, // rings
     d1: usize, // sectors
-) -> Result<Manifold, String> {
+) -> Result<Manifold<T>, String> {
 
     let mut ps = Vec::with_capacity(d0 * d1);
     let mut ts = Vec::with_capacity(d0 * d1 * 6);
@@ -41,5 +41,5 @@ pub fn generate_torus(
         }
     }
 
-    Manifold::new_impl(ps, ts, None, None)
+    Manifold::new_impl(ps, ts, vec![], None, None)
 }

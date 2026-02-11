@@ -23,6 +23,9 @@ use crate::manifold::*;
 
 pub use crate::common::{Real, Vec2, Vec3, Vec4, Mat3, K_PRECISION};
 
+pub trait Var: Clone + Send + Sync + std::fmt::Debug + PartialEq {}
+impl<T> Var for T where T: Clone + Send + Sync + std::fmt::Debug + PartialEq {}
+
 pub mod prelude {
     pub use crate::common::OpType;
     pub use crate::manifold::Manifold;
@@ -40,11 +43,11 @@ pub mod prelude {
     };
 }
 
-pub fn compute_boolean(
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn compute_boolean<T: Var>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
     op: OpType,
-) -> Result<Manifold, String> {
+) -> Result<Manifold<T>, String> {
     let eps = mp.eps.max(mq.eps);
     let tol = mp.tol.max(mq.tol);
 
@@ -64,12 +67,24 @@ pub fn compute_boolean(
 
     cleanup_unused_verts(
         &mut b45.ps,
-        &mut trg.hs
+        &mut trg.hs,
+        &mut trg.rs,
     );
+
+    let mut var = vec![];
+    let vp = &mp.variable;
+    let vq = &mq.variable;
+    if !vp.is_empty() && !vq.is_empty() {
+        var = trg.rs.iter().map(|r| {
+                if r.mid == 0 { vp[r.fid].clone() }
+                else          { vq[r.fid].clone() }
+            }).collect();
+    }
 
     Manifold::new_impl(
         b45.ps,
         trg.hs.chunks(3).map(|hs| Vec3u::new(hs[0].tail, hs[1].tail, hs[2].tail)).collect(),
+        var,
         Some(eps),
         Some(tol)
     )

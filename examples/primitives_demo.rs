@@ -31,7 +31,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>
 ) {
 
-    let mut mfd0 = generate_cylinder(1., 1., 30, 10).unwrap();
+    let mut mfd0: Manifold<()> = generate_cylinder(1., 1., 30, 10).unwrap();
     let mut mfd1 = generate_uv_sphere(30, 30).unwrap();
     let mut mfd2 = generate_torus(1., 0.1, 30, 30).unwrap();
     mfd1.translate(0., 0.5, 0.);
