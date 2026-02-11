@@ -1666,7 +1666,7 @@ dependencies = [
 
 [[package]]
 name = "boolmesh"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "bevy",
  "bevy_panorbit_camera",
