@@ -76,9 +76,9 @@ pub fn compute_boolean<T: Var>(
     let vq = &mq.variable;
     if !vp.is_empty() && !vq.is_empty() {
         var = trg.rs.iter().map(|r| {
-                if r.mid == 0 { vp[r.fid].clone() }
-                else          { vq[r.fid].clone() }
-            }).collect();
+            if r.mid == 0 { vp[r.fid].clone() }
+            else          { vq[r.fid].clone() }
+        }).collect();
     }
 
     Manifold::new_impl(

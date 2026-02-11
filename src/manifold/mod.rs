@@ -32,9 +32,10 @@ pub struct Manifold<T> {
 
 impl<T: Var> Manifold<T> {
     pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> {
-        let ps = pos.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect();
-        let ts = idx.chunks(3).map(|i| Vec3u::new(i[0], i[1], i[2])).collect();
-        Self::new_impl(ps, ts, vec![], None, None)
+        let ps = pos.chunks(3).map(|p| Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real)).collect::<Vec<_>>();
+        let ts = idx.chunks(3).map(|i| Vec3u::new(i[0], i[1], i[2])).collect::<Vec<_>>();
+        let res = dedup_verts(&ps, &ts);
+        Self::new_impl(res.0, res.1, vec![], None, None)
     }
 
     pub fn new_impl(
@@ -44,7 +45,6 @@ impl<T: Var> Manifold<T> {
         eps: Option<Real>,
         tol: Option<Real>,
     ) -> Result<Self, String> {
-        let (ps, ts) = dedup_verts(&ps, &ts, 1e-6);
         let bb = BBox::new(None, &ps);
         let (mut f_bb, mut f_mt) = compute_face_morton(&ps, &ts, &bb);
         let hm = sort_faces(&ps, &ts, &mut f_bb, &mut f_mt)?;
@@ -234,19 +234,16 @@ fn compute_coplanar_idx(
 pub fn dedup_verts(
     pos: &[Vec3],
     idx: &[Vec3u],
-    eps: f64,
 ) -> (Vec<Vec3>, Vec<Vec3u>) {
-    debug_assert!(eps > 0.);
     let mut hash  = HashMap::with_capacity(pos.len());
     let mut weld  = Vec::with_capacity(pos.len());
     let mut remap = vec![0; pos.len()];
-    let e = eps.max(K_PRECISION);
 
     for (i, p) in pos.iter().enumerate() {
         let k = (
-            (p.x / e).round() as i64,
-            (p.y / e).round() as i64,
-            (p.z / e).round() as i64
+            (p.x / K_PRECISION).round() as i64,
+            (p.y / K_PRECISION).round() as i64,
+            (p.z / K_PRECISION).round() as i64
         );
 
         if let Some(&wid) = hash.get(&k) { remap[i] = wid; }
