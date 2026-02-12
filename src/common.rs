@@ -37,9 +37,15 @@ pub struct Half {
     pub pair: usize,
 }
 
-impl Default for Half {
-    fn default() -> Self { Self { tail: usize::MAX, head: usize::MAX, pair: usize::MAX } }
+#[derive(Clone, Debug, Copy)]
+pub struct Tref {
+    pub mid: usize, // mesh id
+    pub fid: usize, // face id
+    pub pid: i32,   // planar id
 }
+
+impl Default for Half { fn default() -> Self { Self { tail: usize::MAX, head: usize::MAX, pair: usize::MAX } } }
+impl Default for Tref { fn default() -> Self { Self { mid: usize::MAX, fid: usize::MAX, pid: -1 } } }
 
 impl Half {
     pub fn new(tail: usize, head: usize, pair: usize) -> Self { Self { tail, head, pair } }
@@ -50,26 +56,9 @@ impl Half {
     pub fn pair(&self) -> Option<usize> { if self.pair == usize::MAX {None} else {Some(self.pair)} }
 }
 
+
 pub fn face_of(hid: usize) -> usize { hid / 3 }
 pub fn next_of(hid: usize) -> usize { let mut i = hid + 1; if i.is_multiple_of(3) { i -= 3;} i }
-
-
-#[derive(Clone, Debug, Copy)]
-pub struct Tref {
-    pub mid: usize, // mesh id
-    pub fid: usize, // face id
-    pub pid: i32,   // planer id
-}
-
-impl Default for Tref {
-    fn default() -> Self {
-        Self {
-            mid: usize::MAX,
-            fid: usize::MAX,
-            pid: -1
-        }
-    }
-}
 
 pub fn det2x2(a: &Vec2, b: &Vec2) -> Real { a.x * b.y - a.y * b.x }
 

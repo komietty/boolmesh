@@ -25,7 +25,7 @@ pub struct Manifold {
     pub bounding_box: BBox,       //
     pub face_normals: Vec<Vec3>,  //
     pub vert_normals: Vec<Vec3>,  //
-    pub original_idx: Vec<usize>, //
+    pub sort_map: Vec<usize>,     //
     pub collider: MortonCollider, //
     pub coplanar: Vec<i32>,       // indices of coplanar faces
 }
@@ -54,11 +54,10 @@ impl Manifold {
         }
 
         // remove collapsed triangles
-        let idx = idx
-            .chunks(3)
-            .map(|i| Vec3u::new(rmap[i[0]], rmap[i[1]], rmap[i[2]]))
-            .filter(|&is| is.x != is.y && is.y != is.z && is.z != is.x)
-            .collect::<Vec<_>>();
+        let idx = idx.chunks(3).filter_map(|i| {
+            let v = Vec3u::new(rmap[i[0]], rmap[i[1]], rmap[i[2]]);
+            (v.x != v.y && v.y != v.z && v.z != v.x).then_some(v)
+        }).collect::<Vec<_>>();
 
         Self::new_impl(weld, idx, None, None)
     }
@@ -71,7 +70,14 @@ impl Manifold {
     ) -> Result<Self, String> {
         let bb = BBox::new(None, &ps);
         let (mut f_bb, mut f_mt) = compute_face_morton(&ps, &idx, &bb);
-        let hm = sort_faces(&ps, &idx, &mut f_bb, &mut f_mt)?;
+
+        // sort faces by morton code
+        let mut map = (0..f_mt.len()).collect::<Vec<_>>();
+        map.sort_by_key(|&i| f_mt[i]);
+        f_bb = map.iter().map(|&i| f_bb[i].clone()).collect::<Vec<_>>();
+        f_mt = map.iter().map(|&i| f_mt[i]).collect::<Vec<_>>();
+
+        let hm = Hmesh::new(&ps, &map.iter().map(|&i| idx[i]).collect::<Vec<_>>())?;
         let hs = hm.half.iter().map(|&i| Half::new(hm.tail[i], hm.head[i], hm.twin[i])).collect::<Vec<_>>();
 
         let mut e = K_PRECISION * bb.scale();
@@ -90,11 +96,11 @@ impl Manifold {
             bounding_box: bb,
             vert_normals: hm.vns,
             face_normals: hm.fns,
-            original_idx: vec![],
-            eps,
-            tol,
+            sort_map: map,
             collider,
             coplanar,
+            eps,
+            tol,
         };
 
         if !mfd.is_manifold() { return Err("The input mesh is not manifold".into()); }
@@ -189,20 +195,6 @@ fn compute_face_morton(
     (bbs, mts)
 }
 
-fn sort_faces(
-    pos: &[Vec3],
-    idx: &[Vec3u],
-    face_bboxes: &mut Vec<BBox>,
-    face_morton: &mut Vec<u32>
-) -> Result<Hmesh, String> {
-    let mut map = (0..face_morton.len()).collect::<Vec<_>>();
-    map.sort_by_key(|&i| face_morton[i]);
-    *face_bboxes = map.iter().map(|&i| face_bboxes[i].clone()).collect::<Vec<_>>();
-    *face_morton = map.iter().map(|&i| face_morton[i]).collect::<Vec<_>>();
-
-    Hmesh::new(pos, &map.iter().map(|&i| idx[i]).collect::<Vec<_>>())
-}
-
 fn compute_coplanar_idx(
     ps: &[Vec3],
     ns: &[Vec3],
@@ -254,35 +246,3 @@ fn compute_coplanar_idx(
     }
     res
 }
-
-pub fn cleanup_unused_verts(
-    ps: &mut Vec<Vec3>,
-    hs: &mut Vec<Half>
-) {
-    let bb = BBox::new(None, ps);
-    let mt = ps.iter().map(|p| morton_code(p, &bb)).collect::<Vec<_>>();
-
-    let mut new2old = (0..ps.len()).collect::<Vec<_>>();
-    let mut old2new = vec![0; ps.len()];
-    new2old.sort_by_key(|&i| mt[i]);
-    for (new, &old) in new2old.iter().enumerate() { old2new[old] = new; }
-
-    // reindex verts
-    for h in hs.iter_mut() {
-        if h.pair().is_none() { continue; }
-        h.tail = old2new[h.tail];
-        h.head = old2new[h.head];
-    }
-
-    // truncate pos container
-    let nv = new2old
-        .iter()
-        .position(|&v| mt[v] >= K_NO_CODE)
-        .unwrap_or(new2old.len());
-
-    new2old.truncate(nv);
-
-    *ps = new2old.iter().map(|&i| ps[i]).collect();
-    *hs = hs.iter().filter(|h| h.pair().is_some()).cloned().collect();
-}
-
