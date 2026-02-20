@@ -125,6 +125,7 @@ fn build_internal_boxes(
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug)]
 pub struct MortonCollider {
     pub node_bb: Vec<BBox>,
