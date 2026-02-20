@@ -1,15 +1,19 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
+use thiserror::Error;
+
+use crate::{manifold::ManifoldError, Manifold, Real, Vec3, Vec3u};
 use std::collections::HashMap;
 use std::f64::consts::PI;
-use crate::{Manifold, Vec3, Vec3u, Real};
 
 pub fn generate_uv_sphere(
     d0: usize, // sectors
     d1: usize, // stacks
-) -> Result<Manifold, String> {
-    if d0 < 3 || d1 < 2 { return Err("sectors must be >= 3 and stacks must be >= 2".into()); }
+) -> Result<Manifold, UVSphereError> {
+    if d0 < 3 || d1 < 2 {
+        return Err(UVSphereError::InvalidSectorCount);
+    }
 
     let mut ps = vec![];
     let mut ts = vec![];
@@ -42,25 +46,27 @@ pub fn generate_uv_sphere(
         }
     }
 
-    Manifold::new_impl(ps, ts, None, None)
+    let manifold = Manifold::new_impl(ps, ts, None, None)?;
+
+    Ok(manifold)
 }
 
-pub fn generate_icosphere(subdivisions: u32) -> Result<Manifold, String> {
+pub fn generate_icosphere(subdivisions: u32) -> Result<Manifold, ManifoldError> {
     let phi = ((1. + 5.0f32.sqrt()) / 2.) as Real;
 
     let mut ps = vec![
-        Vec3::new(-1.0,  phi,  0.0).normalize(),
-        Vec3::new( 1.0,  phi,  0.0).normalize(),
-        Vec3::new(-1.0, -phi,  0.0).normalize(),
-        Vec3::new( 1.0, -phi,  0.0).normalize(),
-        Vec3::new( 0.0, -1.0,  phi).normalize(),
-        Vec3::new( 0.0,  1.0,  phi).normalize(),
-        Vec3::new( 0.0, -1.0, -phi).normalize(),
-        Vec3::new( 0.0,  1.0, -phi).normalize(),
-        Vec3::new( phi,  0.0, -1.0).normalize(),
-        Vec3::new( phi,  0.0,  1.0).normalize(),
-        Vec3::new(-phi,  0.0, -1.0).normalize(),
-        Vec3::new(-phi,  0.0,  1.0).normalize(),
+        Vec3::new(-1.0, phi, 0.0).normalize(),
+        Vec3::new(1.0, phi, 0.0).normalize(),
+        Vec3::new(-1.0, -phi, 0.0).normalize(),
+        Vec3::new(1.0, -phi, 0.0).normalize(),
+        Vec3::new(0.0, -1.0, phi).normalize(),
+        Vec3::new(0.0, 1.0, phi).normalize(),
+        Vec3::new(0.0, -1.0, -phi).normalize(),
+        Vec3::new(0.0, 1.0, -phi).normalize(),
+        Vec3::new(phi, 0.0, -1.0).normalize(),
+        Vec3::new(phi, 0.0, 1.0).normalize(),
+        Vec3::new(-phi, 0.0, -1.0).normalize(),
+        Vec3::new(-phi, 0.0, 1.0).normalize(),
     ];
 
     let mut ts = vec![
@@ -88,14 +94,18 @@ pub fn generate_icosphere(subdivisions: u32) -> Result<Manifold, String> {
 
     let mut cache = HashMap::new();
 
-    let get_midpoint = |
-        vid1: usize,
-        vid2: usize,
-        verts: &mut Vec<Vec3>,
-        cache: &mut HashMap<(usize, usize), usize>
-    | {
-        let e = if vid1 < vid2 { (vid1, vid2) } else { (vid2, vid1) };
-        if let Some(&i) = cache.get(&e) { return i; }
+    let get_midpoint = |vid1: usize,
+                        vid2: usize,
+                        verts: &mut Vec<Vec3>,
+                        cache: &mut HashMap<(usize, usize), usize>| {
+        let e = if vid1 < vid2 {
+            (vid1, vid2)
+        } else {
+            (vid2, vid1)
+        };
+        if let Some(&i) = cache.get(&e) {
+            return i;
+        }
 
         let v1 = verts[vid1];
         let v2 = verts[vid2];
@@ -121,4 +131,13 @@ pub fn generate_icosphere(subdivisions: u32) -> Result<Manifold, String> {
     }
 
     Manifold::new_impl(ps, ts, None, None)
+}
+
+#[derive(Debug, Error)]
+pub enum UVSphereError {
+    #[error("sectors must be >= 3 and stacks must be >= 2")]
+    InvalidSectorCount,
+
+    #[error("{0}")]
+    Manifold(#[from] ManifoldError),
 }

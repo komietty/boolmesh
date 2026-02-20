@@ -1,16 +1,17 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use std::f64::consts::PI;
-use crate::{Manifold, Vec3, Real, compute_orthogonal};
 use crate::common::Vec3u;
+use crate::manifold::ManifoldError;
+use crate::{compute_orthogonal, Manifold, Real, Vec3};
+use std::f64::consts::PI;
 
 pub fn generate_cone(
     apex: Vec3,
     center: Vec3,
     radius: Real,
     divide: usize,
-) -> Result<Manifold, String> {
+) -> Result<Manifold, ManifoldError> {
     let d = (PI * 2. / divide as f64) as Real;
     let n = (center - apex).normalize();
     let b1 = compute_orthogonal(n);
