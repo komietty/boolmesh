@@ -14,11 +14,19 @@ mod simplification;
 mod tests;
 mod triangulation;
 
+use std::cmp::Ordering;
+use std::collections::HashSet;
+
+use geo::BooleanOps;
+use geo::LineString;
+use geo::MultiPolygon;
+use geo::Polygon;
 use thiserror::Error;
 
 use crate::boolean03::boolean03;
 use crate::boolean45::boolean45;
 use crate::common::*;
+use crate::manifold::bounds::Query;
 use crate::manifold::*;
 use crate::simplification::simplify_topology;
 use crate::triangulation::triangulate;
@@ -95,3 +103,137 @@ pub enum BooleanError {
 //    };
 //    compute_boolean(&mp, &mq, op)
 //}
+
+#[derive(Debug, Error)]
+pub enum ProjectionError {
+    #[error("No polygons were produced by the operation")]
+    NoPolygons,
+}
+
+/// Projects the manifold onto the XY plane. Rotate the manifold to project onto custom planes.
+/// projection.
+/// * manifold - Input manifold to project
+pub fn compute_projection(manifold: &Manifold) -> Result<MultiPolygon, ProjectionError> {
+    // TODO there should be a way to directly iterate triangles.
+    let mut polygons = manifold.hs.chunks(3).map(|halfedge| {
+        // TODO we should have a function on manifold for grabbing a position based on it's
+        // half-edge ID.
+        let p0 = manifold.ps[halfedge[0].tail];
+        let p1 = manifold.ps[halfedge[1].tail];
+        let p2 = manifold.ps[halfedge[2].tail];
+        let mut line_string = Vec::new();
+
+        for position in [p0, p1, p2] {
+            line_string.push(geo::Coord {
+                x: position.x,
+                y: position.y,
+            });
+        }
+
+        let mut line_string = LineString(line_string);
+        line_string.close();
+        Polygon::new(line_string, vec![])
+    });
+
+    let first = polygons.next().ok_or(ProjectionError::NoPolygons)?;
+    let init = MultiPolygon::new(vec![first]);
+    let polygon = polygons.fold(init, |acc, next| acc.boolean_op(&next, geo::OpType::Union));
+
+    Ok(polygon)
+}
+
+#[derive(Debug, Error)]
+pub enum SliceError {
+    #[error("No polygons were produced by the operation")]
+    NoPolygons,
+}
+
+/// Slice a manifold into a 2D polygon
+/// * manifold - Input manifold to slice
+/// * height - z height to slice at
+pub fn compute_slice(manifold: &Manifold, height: Real) -> Result<MultiPolygon, SliceError> {
+    let mut bounding_box = manifold.bounding_box.clone();
+    bounding_box.min.z = height;
+    bounding_box.max.z = height;
+    bounding_box.id = Some(0); // Collider will not report collisions without this.
+
+    let mut triangle_ids = HashSet::new();
+
+    manifold
+        .collider
+        .collision(&[Query::Bb(bounding_box)], &mut |_query_id, triangle_id| {
+            let z_points = [0, 1, 2]
+                .into_iter()
+                .map(|j| manifold.ps[manifold.hs[3 * triangle_id + j].tail].z);
+
+            // We have to account for NaN with these min/max functions, so we're going to just
+            // filter out the NaNs.
+            let min = z_points
+                .clone()
+                .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Greater));
+            let max = z_points.max_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Less));
+
+            // If the lowest point is below the height threashold, and the highest point is above,
+            // then this triangle intersects with the height plane.
+            if let (Some(min), Some(max)) = (min, max) && min <= height && max > height {
+                triangle_ids.insert(triangle_id);
+            }
+        });
+
+    // At this point, triangle_ids contains a list of triangles that intersect with the height
+    // plane.
+    fn next3(j: usize) -> usize {
+      (j + 1) % 3
+    }
+
+    let mut polygons = Vec::new();
+
+    while !triangle_ids.is_empty() {
+        let start_triangle_id = *triangle_ids.iter().next().ok_or(SliceError::NoPolygons)?;
+        
+        let mut vertex_index = 0;
+        for j in [0, 1, 2] {
+            if manifold.ps[manifold.hs[3 * start_triangle_id + j].tail].z > height &&
+                manifold.ps[manifold.hs[3 * start_triangle_id + next3(j)].tail].z <= height {
+              vertex_index = next3(j);
+              break;
+            }
+        }
+
+        let mut line_string = Vec::new();
+        let mut current_triangle_id = start_triangle_id;
+        loop {
+            triangle_ids.remove(&current_triangle_id);
+
+            if manifold.ps[manifold.hs[3 * current_triangle_id + vertex_index].head].z <= height {
+              vertex_index = next3(vertex_index);
+            }
+
+            let up = &manifold.hs[3 * current_triangle_id + vertex_index];
+            let below = manifold.ps[up.tail];
+            let above = manifold.ps[up.head];
+            let a = (height - below.z) / (above.z - below.z);
+            let point = below.lerp(above, a);
+            line_string.push(geo::Coord { x: point.x, y: point.y });
+
+            let pair = up.pair;
+            current_triangle_id = pair / 3;
+            vertex_index = next3(pair % 3);
+
+            if current_triangle_id == start_triangle_id {
+                break;
+            }
+        }
+
+        let mut line_string = LineString(line_string);
+        line_string.close();
+        polygons.push(Polygon::new(line_string, vec![]));
+    }
+   
+    let mut polygons = polygons.into_iter();
+    let first = polygons.next().ok_or(SliceError::NoPolygons)?;
+    let init = MultiPolygon::new(vec![first]);
+    let polygon = polygons.fold(init, |acc, next| acc.boolean_op(&next, geo::OpType::Union));
+
+    Ok(polygon)
+}
