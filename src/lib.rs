@@ -15,12 +15,12 @@ mod tests;
 mod triangulation;
 
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 
-use geo::BooleanOps;
-use geo::LineString;
-use geo::MultiPolygon;
-use geo::Polygon;
+use geo::IsConvex;
+use geo::{BooleanOps, LineString, MultiPolygon, Polygon, Coord};
 use thiserror::Error;
 
 use crate::boolean03::boolean03;
@@ -115,31 +115,75 @@ pub enum ProjectionError {
 /// * manifold - Input manifold to project
 pub fn compute_projection(manifold: &Manifold) -> Result<MultiPolygon, ProjectionError> {
     // TODO there should be a way to directly iterate triangles.
-    let mut polygons = manifold.hs.chunks(3).map(|halfedge| {
-        // TODO we should have a function on manifold for grabbing a position based on it's
-        // half-edge ID.
-        let p0 = manifold.ps[halfedge[0].tail];
-        let p1 = manifold.ps[halfedge[1].tail];
-        let p2 = manifold.ps[halfedge[2].tail];
+    let mut edge_ids: BTreeMap<usize, VecDeque<usize>> = BTreeMap::new();
+
+    trait EdgeMap {
+        fn next_starting_edge(&self) -> Option<usize>;
+        fn next_edge(&mut self, manifold: &Manifold, current_edge_id: usize) -> Option<usize>;
+    }
+
+    impl EdgeMap for BTreeMap<usize, VecDeque<usize>> {
+        fn next_starting_edge(&self) -> Option<usize> {
+            let (_edge_id, queue) = self.first_key_value()?;
+            let value = queue.back();
+            value.copied()
+        }
+        
+        fn next_edge(&mut self, manifold: &Manifold, current_edge_id: usize) -> Option<usize> {
+            let current_key = manifold.hs[current_edge_id].head;
+            let queue = self.get_mut(&current_key)?;
+            let value = queue.pop_back();
+            if queue.is_empty() {
+                self.remove(&current_key);
+            }
+
+            value
+        }
+    }
+
+    for (edge_id, edge) in manifold.hs.iter().enumerate() {
+        // This filters our faces so that only faces that are connected to another face that is on
+        // the opposite side of the manifold are included. This instantly gives us the edge
+        // boundaries.
+        if manifold.face_normals[manifold.hs[edge.pair].pair / 3].z <= 0.0
+         && manifold.face_normals[edge.pair / 3].z > 0.0 {
+            edge_ids.entry(edge.tail).or_default().push_front(edge_id);
+        }
+    }
+
+    let mut polygons = Vec::new();
+    while let Some(first_edge_id) = edge_ids.next_starting_edge() {
+        let mut current_edge_id = first_edge_id;
         let mut line_string = Vec::new();
 
-        for position in [p0, p1, p2] {
-            line_string.push(geo::Coord {
-                x: position.x,
-                y: position.y,
-            });
+        loop {
+            let point = manifold.ps[manifold.hs[current_edge_id].head];
+            line_string.push(Coord { x: point.x, y: point.y });
+
+            let next_edge_id =  edge_ids.next_edge(manifold, current_edge_id).expect("Non-manafold edge");
+            
+            if next_edge_id != first_edge_id {
+                current_edge_id = next_edge_id;
+            } else {
+                // We've come back to our initial point.
+                break;
+            }
         }
 
         let mut line_string = LineString(line_string);
         line_string.close();
-        Polygon::new(line_string, vec![])
-    });
+        let raw_polygon = Polygon::new(line_string, vec![]);
 
-    let first = polygons.next().ok_or(ProjectionError::NoPolygons)?;
-    let init = MultiPolygon::new(vec![first]);
-    let polygon = polygons.fold(init, |acc, next| acc.boolean_op(&next, geo::OpType::Union));
+        polygons.push(raw_polygon);
+    }
 
-    Ok(polygon)
+    let polygon = geo::unary_union(&polygons);
+
+    if polygons.is_empty() {
+        Err(ProjectionError::NoPolygons)
+    } else {
+        Ok(polygon)
+    }
 }
 
 #[derive(Debug, Error)]

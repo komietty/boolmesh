@@ -83,9 +83,9 @@ fn setup(
         ));
 
         let projection = compute_projection(&model).unwrap();
-        let projection_meshs = geo_bevy::multi_polygon_to_mesh(&projection).unwrap();
+        let projection_meshes = geo_bevy::multi_polygon_to_mesh(&projection).unwrap();
 
-        for mesh in projection_meshs {
+        for mesh in projection_meshes {
             let mut mesh = mesh.mesh;
             if let VertexAttributeValues::Float32x3(values) =
                 mesh.attribute_mut(Mesh::ATTRIBUTE_NORMAL).unwrap()
