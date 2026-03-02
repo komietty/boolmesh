@@ -112,7 +112,7 @@ pub enum ProjectionError {
 /// Projects the manifold onto the XY plane. Rotate the manifold to project onto custom planes.
 /// projection.
 /// * manifold - Input manifold to project
-pub fn compute_projection(manifold: &Manifold) -> Result<MultiPolygon, ProjectionError> {
+pub fn compute_projection(manifold: &Manifold) -> Result<MultiPolygon<Real>, ProjectionError> {
     // TODO there should be a way to directly iterate triangles.
     let mut edge_ids: BTreeMap<usize, VecDeque<usize>> = BTreeMap::new();
 
@@ -194,7 +194,7 @@ pub enum SliceError {
 /// Slice a manifold into a 2D polygon
 /// * manifold - Input manifold to slice
 /// * height - z height to slice at
-pub fn compute_slice(manifold: &Manifold, height: Real) -> Result<MultiPolygon, SliceError> {
+pub fn compute_slice(manifold: &Manifold, height: Real) -> Result<MultiPolygon<Real>, SliceError> {
     let mut bounding_box = manifold.bounding_box.clone();
     bounding_box.min.z = height;
     bounding_box.max.z = height;
