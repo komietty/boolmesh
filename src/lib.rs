@@ -16,11 +16,10 @@ mod triangulation;
 
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::collections::VecDeque;
 
-use geo::IsConvex;
-use geo::{BooleanOps, LineString, MultiPolygon, Polygon, Coord};
+use geo::{LineString, MultiPolygon, Polygon, Coord};
 use thiserror::Error;
 
 use crate::boolean03::boolean03;
@@ -201,7 +200,7 @@ pub fn compute_slice(manifold: &Manifold, height: Real) -> Result<MultiPolygon, 
     bounding_box.max.z = height;
     bounding_box.id = Some(0); // Collider will not report collisions without this.
 
-    let mut triangle_ids = HashSet::new();
+    let mut triangle_ids = BTreeSet::new();
 
     manifold
         .collider
@@ -233,7 +232,7 @@ pub fn compute_slice(manifold: &Manifold, height: Real) -> Result<MultiPolygon, 
     let mut polygons = Vec::new();
 
     while !triangle_ids.is_empty() {
-        let start_triangle_id = *triangle_ids.iter().next().ok_or(SliceError::NoPolygons)?;
+        let start_triangle_id = *triangle_ids.first().ok_or(SliceError::NoPolygons)?;
         
         let mut vertex_index = 0;
         for j in [0, 1, 2] {
@@ -274,10 +273,11 @@ pub fn compute_slice(manifold: &Manifold, height: Real) -> Result<MultiPolygon, 
         polygons.push(Polygon::new(line_string, vec![]));
     }
    
-    let mut polygons = polygons.into_iter();
-    let first = polygons.next().ok_or(SliceError::NoPolygons)?;
-    let init = MultiPolygon::new(vec![first]);
-    let polygon = polygons.fold(init, |acc, next| acc.boolean_op(&next, geo::OpType::Union));
+    let polygon = geo::unary_union(&polygons);
 
-    Ok(polygon)
+    if polygons.is_empty() {
+        Err(SliceError::NoPolygons)
+    } else {
+        Ok(polygon)
+    }
 }
