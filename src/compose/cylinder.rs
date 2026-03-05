@@ -1,20 +1,24 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
+use thiserror::Error;
+
+use crate::{manifold::ManifoldError, Manifold, Real, Vec3, Vec3u};
 use std::f64::consts::PI;
-use crate::{Manifold, Vec3, Vec3u, Real};
 
 pub fn generate_cylinder(
     r: f64,    // radius
     h: f64,    // height
     d0: usize, // sectors
     d1: usize, // stacks
-) -> Result<Manifold, String> {
-    if d0 < 3 || d1 < 1 { return Err("sectors must be >= 3 and stacks must be >= 1".into()); }
+) -> Result<Manifold, CylinderError> {
+    if d0 < 3 || d1 < 1 {
+        return Err(CylinderError::InvalidSectorCount);
+    }
     let mut ps = vec![];
     let mut ts = vec![];
 
-    ps.push(Vec3::new(0.,  h as Real * 0.5, 0.));
+    ps.push(Vec3::new(0., h as Real * 0.5, 0.));
     ps.push(Vec3::new(0., -h as Real * 0.5, 0.));
 
     for i in 0..=d1 {
@@ -45,5 +49,16 @@ pub fn generate_cylinder(
         }
     }
 
-    Manifold::new_impl(ps, ts, None, None)
+    let manifold = Manifold::new_impl(ps, ts, None, None)?;
+
+    Ok(manifold)
+}
+
+#[derive(Debug, Error)]
+pub enum CylinderError {
+    #[error("sectors must be >= 3 and stacks must be >= 1")]
+    InvalidSectorCount,
+
+    #[error("{0}")]
+    Manifold(#[from] ManifoldError),
 }

@@ -6,7 +6,9 @@ mod precision {
     pub type Vec2 = glam::Vec2;
     pub type Vec3 = glam::Vec3A;
     pub type Vec4 = glam::Vec4;
+    pub type Mat2 = glam::Mat2;
     pub type Mat3 = glam::Mat3A;
+    pub type Affine3 = glam::Affine3A;
     pub type Real = f32;
     pub const K_PRECISION: Real = 1e-4;
 }
@@ -16,20 +18,26 @@ mod precision {
     pub type Vec2 = glam::DVec2;
     pub type Vec3 = glam::DVec3;
     pub type Vec4 = glam::DVec4;
+    pub type Mat2 = glam::DMat2;
     pub type Mat3 = glam::DMat3;
+    pub type Affine3 = glam::DAffine3;
     pub type Real = f64;
     pub const K_PRECISION: f64 = 1e-12;
 }
 
 pub type Vec2u = glam::USizeVec2;
 pub type Vec3u = glam::USizeVec3;
-pub use precision::{Real, Vec2, Vec3, Vec4, Mat3, K_PRECISION};
+pub use precision::{Affine3, Mat2, Mat3, Real, Vec2, Vec3, Vec4, K_PRECISION};
 pub const K_BEST: Real = Real::MIN;
 
-
 #[derive(PartialEq)]
-pub enum OpType { Add, Subtract, Intersect }
+pub enum OpType {
+    Add,
+    Subtract,
+    Intersect,
+}
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug)]
 pub struct Half {
     pub tail: usize,
@@ -38,21 +46,62 @@ pub struct Half {
 }
 
 impl Default for Half {
-    fn default() -> Self { Self { tail: usize::MAX, head: usize::MAX, pair: usize::MAX } }
+    fn default() -> Self {
+        Self {
+            tail: usize::MAX,
+            head: usize::MAX,
+            pair: usize::MAX,
+        }
+    }
 }
 
 impl Half {
-    pub fn new(tail: usize, head: usize, pair: usize) -> Self { Self { tail, head, pair } }
-    pub fn new_without_pair(tail: usize, head: usize) -> Self { Self { tail, head, pair: usize::MAX } }
-    pub fn is_forward(&self) -> bool { self.tail < self.head }
-    pub fn tail(&self) -> Option<usize> { if self.tail == usize::MAX {None} else {Some(self.tail)} }
-    pub fn head(&self) -> Option<usize> { if self.head == usize::MAX {None} else {Some(self.head)} }
-    pub fn pair(&self) -> Option<usize> { if self.pair == usize::MAX {None} else {Some(self.pair)} }
+    pub fn new(tail: usize, head: usize, pair: usize) -> Self {
+        Self { tail, head, pair }
+    }
+    pub fn new_without_pair(tail: usize, head: usize) -> Self {
+        Self {
+            tail,
+            head,
+            pair: usize::MAX,
+        }
+    }
+    pub fn is_forward(&self) -> bool {
+        self.tail < self.head
+    }
+    pub fn tail(&self) -> Option<usize> {
+        if self.tail == usize::MAX {
+            None
+        } else {
+            Some(self.tail)
+        }
+    }
+    pub fn head(&self) -> Option<usize> {
+        if self.head == usize::MAX {
+            None
+        } else {
+            Some(self.head)
+        }
+    }
+    pub fn pair(&self) -> Option<usize> {
+        if self.pair == usize::MAX {
+            None
+        } else {
+            Some(self.pair)
+        }
+    }
 }
 
-pub fn face_of(hid: usize) -> usize { hid / 3 }
-pub fn next_of(hid: usize) -> usize { let mut i = hid + 1; if i.is_multiple_of(3) { i -= 3;} i }
-
+pub fn face_of(hid: usize) -> usize {
+    hid / 3
+}
+pub fn next_of(hid: usize) -> usize {
+    let mut i = hid + 1;
+    if i.is_multiple_of(3) {
+        i -= 3;
+    }
+    i
+}
 
 #[derive(Clone, Debug, Copy)]
 pub struct Tref {
@@ -66,12 +115,14 @@ impl Default for Tref {
         Self {
             mid: usize::MAX,
             fid: usize::MAX,
-            pid: -1
+            pid: -1,
         }
     }
 }
 
-pub fn det2x2(a: &Vec2, b: &Vec2) -> Real { a.x * b.y - a.y * b.x }
+pub fn det2x2(a: &Vec2, b: &Vec2) -> Real {
+    a.x * b.y - a.y * b.x
+}
 
 pub fn get_aa_proj_matrix(n: &Vec3) -> (Vec3, Vec3) {
     let a = n.abs();
@@ -79,11 +130,29 @@ pub fn get_aa_proj_matrix(n: &Vec3) -> (Vec3, Vec3) {
     let r1: Vec3;
     let r2: Vec3;
 
-    if a.z > a.x && a.z > a.y { r1 = Vec3::new(1., 0., 0.); r2 = Vec3::new(0., 1., 0.); m = n.z; } // preserve x, y
-    else if a.y > a.x         { r1 = Vec3::new(0., 0., 1.); r2 = Vec3::new(1., 0., 0.); m = n.y; } // preserve z, x
-    else                      { r1 = Vec3::new(0., 1., 0.); r2 = Vec3::new(0., 0., 1.); m = n.x; } // preserve y, z
+    if a.z > a.x && a.z > a.y {
+        r1 = Vec3::new(1., 0., 0.);
+        r2 = Vec3::new(0., 1., 0.);
+        m = n.z;
+    }
+    // preserve x, y
+    else if a.y > a.x {
+        r1 = Vec3::new(0., 0., 1.);
+        r2 = Vec3::new(1., 0., 0.);
+        m = n.y;
+    }
+    // preserve z, x
+    else {
+        r1 = Vec3::new(0., 1., 0.);
+        r2 = Vec3::new(0., 0., 1.);
+        m = n.x;
+    } // preserve y, z
 
-    if m < 0. { (-r1, r2) } else { (r1, r2) }
+    if m < 0. {
+        (-r1, r2)
+    } else {
+        (r1, r2)
+    }
 }
 
 pub fn compute_aa_proj(p: &(Vec3, Vec3), v: &Vec3) -> Vec2 {
@@ -95,8 +164,14 @@ pub fn is_ccw_2d(p0: &Vec2, p1: &Vec2, p2: &Vec2, t: Real) -> i32 {
     let v2 = p2 - p0;
     let area = v1.x * v2.y - v1.y * v2.x;
     let base = v1.length_squared().max(v2.length_squared());
-    if area.powi(2) * 4. <= base * t.powi(2) { return 0; }
-    if area > 0. { 1 } else { -1 }
+    if area.powi(2) * 4. <= base * t.powi(2) {
+        return 0;
+    }
+    if area > 0. {
+        1
+    } else {
+        -1
+    }
 }
 
 pub fn is_ccw_3d(p0: &Vec3, p1: &Vec3, p2: &Vec3, n: &Vec3, t: Real) -> i32 {
@@ -105,21 +180,25 @@ pub fn is_ccw_3d(p0: &Vec3, p1: &Vec3, p2: &Vec3, n: &Vec3, t: Real) -> i32 {
         &compute_aa_proj(&p, p0),
         &compute_aa_proj(&p, p1),
         &compute_aa_proj(&p, p2),
-        t
+        t,
     )
 }
 
 pub fn safe_normalize(v: Vec2) -> Vec2 {
     let n = v.normalize();
-    if n.x.is_finite() && !n.x.is_nan() &&
-       n.y.is_finite() && !n.y.is_nan() { n }
-    else { Vec2::new(0., 0.) }
+    if n.x.is_finite() && !n.x.is_nan() && n.y.is_finite() && !n.y.is_nan() {
+        n
+    } else {
+        Vec2::new(0., 0.)
+    }
 }
 
 pub fn compute_orthogonal(n: Vec3) -> Vec3 {
-    let b = if n.x.abs() < 0.9
-         { Vec3::new(1., 0., 0.) }
-    else { Vec3::new(0., 1., 0.) };
+    let b = if n.x.abs() < 0.9 {
+        Vec3::new(1., 0., 0.)
+    } else {
+        Vec3::new(0., 1., 0.)
+    };
     n.cross(b).normalize()
 }
 
