@@ -6,7 +6,9 @@ mod precision {
     pub type Vec2 = glam::Vec2;
     pub type Vec3 = glam::Vec3A;
     pub type Vec4 = glam::Vec4;
+    pub type Mat2 = glam::Mat2;
     pub type Mat3 = glam::Mat3A;
+    pub type Affine3 = glam::Affine3A;
     pub type Real = f32;
     pub const K_PRECISION: Real = 1e-4;
 }
@@ -16,14 +18,16 @@ mod precision {
     pub type Vec2 = glam::DVec2;
     pub type Vec3 = glam::DVec3;
     pub type Vec4 = glam::DVec4;
+    pub type Mat2 = glam::DMat2;
     pub type Mat3 = glam::DMat3;
+    pub type Affine3 = glam::DAffine3;
     pub type Real = f64;
     pub const K_PRECISION: f64 = 1e-12;
 }
 
 pub type Vec2u = glam::USizeVec2;
 pub type Vec3u = glam::USizeVec3;
-pub use precision::{Mat3, Real, Vec2, Vec3, Vec4, K_PRECISION};
+pub use precision::{Affine3, Mat2, Mat3, Real, Vec2, Vec3, Vec4, K_PRECISION};
 pub const K_BEST: Real = Real::MIN;
 
 #[derive(PartialEq)]

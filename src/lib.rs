@@ -37,7 +37,7 @@ pub mod prelude {
     pub use crate::common::OpType;
     pub use crate::compose::{
         compose, extrude, fractal, generate_cone, generate_cube, generate_cylinder,
-        generate_icosphere, generate_torus, generate_uv_sphere,
+        generate_icosphere, generate_torus, generate_uv_sphere, ExtrudePoly, ExtrusionError,
     };
     pub use crate::compute_boolean;
     pub use crate::manifold::Manifold;

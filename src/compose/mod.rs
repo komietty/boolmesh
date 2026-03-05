@@ -5,12 +5,14 @@
 pub mod cone;
 pub mod cube;
 pub mod cylinder;
+pub mod extrusion;
 pub mod sphere;
 pub mod torus;
 
 pub use cone::*;
 pub use cube::*;
 pub use cylinder::*;
+pub use extrusion::*;
 pub use sphere::*;
 pub use torus::*;
 
