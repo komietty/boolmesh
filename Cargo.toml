@@ -1,6 +1,6 @@
 [package]
 name = "boolmesh"
-version = "0.1.9"
+version = "0.1.10"
 edition = "2024"
 description = "Robust 3D mesh boolean library"
 rust-version = "1.87"
