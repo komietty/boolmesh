@@ -440,3 +440,147 @@ mod test_mesh_cleanup {
         assert_eq!(mfd.nf, 4);
     }
 }
+
+// Degenerate configurations of two icospheres: identical, offset or rotated by a few ulp,
+// tangent, nested, and differing in resolution. These exercise coincident faces and edges
+// on curved surfaces, where |x12| == 2 entries can appear (see boolean45::duplicate_verts).
+// Each case checks the volume identities  Add + Int == Va + Vb  and  Sub + Int == Va.
+#[cfg(test)]
+mod test_sphere_degenerate {
+    use std::collections::HashMap;
+    use crate::prelude::*;
+    use crate::Vec3;
+
+    fn icosphere(sub: usize, r: f64, c: [f64; 3], rot: f64) -> Manifold {
+        let t = (1.0 + 5f64.sqrt()) / 2.0;
+        let mut v: Vec<[f64; 3]> = vec![
+            [-1., t, 0.], [1., t, 0.], [-1., -t, 0.], [1., -t, 0.],
+            [0., -1., t], [0., 1., t], [0., -1., -t], [0., 1., -t],
+            [t, 0., -1.], [t, 0., 1.], [-t, 0., -1.], [-t, 0., 1.],
+        ];
+        let mut f: Vec<[usize; 3]> = vec![
+            [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+            [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+            [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+            [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+        ];
+        for _ in 0..sub {
+            let mut nf = vec![];
+            let mut cache = HashMap::new();
+            let mut mid = |a: usize, b: usize, v: &mut Vec<[f64; 3]>| -> usize {
+                *cache.entry((a.min(b), a.max(b))).or_insert_with(|| {
+                    v.push([(v[a][0] + v[b][0]) / 2., (v[a][1] + v[b][1]) / 2., (v[a][2] + v[b][2]) / 2.]);
+                    v.len() - 1
+                })
+            };
+            for t in &f {
+                let (a, b, c) = (t[0], t[1], t[2]);
+                let ab = mid(a, b, &mut v);
+                let bc = mid(b, c, &mut v);
+                let ca = mid(c, a, &mut v);
+                nf.extend_from_slice(&[[a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]]);
+            }
+            f = nf;
+        }
+        let (cs, sn) = (rot.cos(), rot.sin());
+        let pos: Vec<f64> = v.iter().flat_map(|p| {
+            let l = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+            let q = [p[0] / l * r, p[1] / l * r, p[2] / l * r];
+            [cs * q[0] - sn * q[1] + c[0], sn * q[0] + cs * q[1] + c[1], q[2] + c[2]]
+        }).collect();
+        let idx: Vec<usize> = f.iter().flat_map(|t| t.iter().copied()).collect();
+        Manifold::new(&pos, &idx).unwrap()
+    }
+
+    fn volume(m: &Manifold) -> f64 {
+        m.hs.chunks(3).map(|t| {
+            let a: Vec3 = m.ps[t[0].tail];
+            let b: Vec3 = m.ps[t[1].tail];
+            let c: Vec3 = m.ps[t[2].tail];
+            a.dot(b.cross(c)) as f64
+        }).sum::<f64>() / 6.
+    }
+
+    // An empty result is reported as Err("empty pos matrix"); treat it as zero volume.
+    fn boolean_volume(a: &Manifold, b: &Manifold, op: OpType) -> f64 {
+        match compute_boolean(a, b, op) {
+            Ok(m) => volume(&m),
+            Err(e) if e.contains("empty") => 0.,
+            Err(e) => panic!("boolean failed: {e}"),
+        }
+    }
+
+    fn check_identities(a: &Manifold, b: &Manifold) {
+        let tol = if cfg!(feature = "f32") { 1e-4 } else { 1e-9 };
+        let va = volume(a);
+        let vb = volume(b);
+        let add = boolean_volume(a, b, OpType::Add);
+        let sub = boolean_volume(a, b, OpType::Subtract);
+        let int = boolean_volume(a, b, OpType::Intersect);
+        let e1 = (add + int - va - vb).abs() / (va + vb);
+        let e2 = (sub + int - va).abs() / (va + vb);
+        assert!(e1 < tol, "Add + Int != Va + Vb: add={add} int={int} va={va} vb={vb} rel_err={e1:e}");
+        assert!(e2 < tol, "Sub + Int != Va: sub={sub} int={int} va={va} rel_err={e2:e}");
+        assert!(int >= -tol && int <= va.min(vb) + tol, "Int out of range: {int}");
+    }
+
+    #[test]
+    fn test_sphere_identical() {
+        let s = icosphere(3, 1., [0., 0., 0.], 0.);
+        check_identities(&s, &s);
+        assert!(boolean_volume(&s, &s, OpType::Subtract).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_sphere_shifted_by_ulps() {
+        let s = icosphere(3, 1., [0., 0., 0.], 0.);
+        for d in [1e-15, 1e-12, 1e-9, 1e-6, 1e-3] {
+            check_identities(&s, &icosphere(3, 1., [d, 0., 0.], 0.));
+        }
+    }
+
+    #[test]
+    fn test_sphere_rotated_slightly() {
+        let s = icosphere(3, 1., [0., 0., 0.], 0.);
+        for d in [1e-12, 1e-9, 1e-6, 1e-3] {
+            check_identities(&s, &icosphere(3, 1., [0., 0., 0.], d));
+        }
+    }
+
+    // Known limitation: with a rotation of a few ulp the edges of the two spheres are
+    // nearly coincident and the interpolation parameter in kernel01::intersect is
+    // ill-conditioned, so intersection verts land at arbitrary points along the edges
+    // and the two sheets of the result no longer enclose ~zero volume. Fixing this
+    // needs adaptive-precision evaluation of the signed distances (Shewchuk-style).
+    #[test]
+    #[ignore]
+    fn test_sphere_rotated_by_ulps() {
+        let s = icosphere(3, 1., [0., 0., 0.], 0.);
+        check_identities(&s, &icosphere(3, 1., [0., 0., 0.], 1e-15));
+    }
+
+    #[test]
+    fn test_sphere_tangent_at_vertex() {
+        let s = icosphere(3, 1., [0., 0., 0.], 0.);
+        check_identities(&s, &icosphere(3, 1., [2., 0., 0.], 0.));
+    }
+
+    #[test]
+    fn test_sphere_nested() {
+        let s = icosphere(3, 1., [0., 0., 0.], 0.);
+        check_identities(&s, &icosphere(3, 0.5, [0., 0., 0.], 0.));
+    }
+
+    #[test]
+    fn test_sphere_vs_coarser_sphere() {
+        // Shares the 12 icosahedron verts; every other vert of the coarser mesh lies inside the finer one.
+        let s = icosphere(3, 1., [0., 0., 0.], 0.);
+        check_identities(&s, &icosphere(2, 1., [0., 0., 0.], 0.));
+    }
+
+    #[test]
+    fn test_sphere_rotated_36deg() {
+        let s = icosphere(3, 1., [0., 0., 0.], 0.);
+        check_identities(&s, &icosphere(3, 1., [0., 0., 0.], std::f64::consts::PI / 5.));
+    }
+}

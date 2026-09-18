@@ -368,8 +368,8 @@ pub fn boolean45(
 
     for i in 0..mp.nv { duplicate_verts(&i03, &vid_p2r, &mp.ps, &mut ps_r, i); }
     for i in 0..mq.nv { duplicate_verts(&i30, &vid_q2r, &mq.ps, &mut ps_r, i); }
-    for i in 0..nv_12 { duplicate_verts(&i12, &vid_12r, &b03.v12, &mut ps_r, i as usize); }
-    for i in 0..nv_21 { duplicate_verts(&i21, &vid_21r, &b03.v21, &mut ps_r, i as usize); }
+    for i in 0..b03.v12.len() { duplicate_verts(&i12, &vid_12r, &b03.v12, &mut ps_r, i); }
+    for i in 0..b03.v21.len() { duplicate_verts(&i21, &vid_21r, &b03.v21, &mut ps_r, i); }
 
     let mut pt_p   = HashMap::new();
     let mut pt_q   = HashMap::new();
