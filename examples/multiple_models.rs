@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy::pbr::wireframe::{WireframePlugin, Wireframe, WireframeColor};
 use bevy::color::palettes::css::*;
 use bevy::asset::RenderAssetUsages;
-use bevy::render::mesh::PrimitiveTopology;
+use bevy::render::render_resource::PrimitiveTopology;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 
 #[derive(Component)]

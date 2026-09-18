@@ -356,13 +356,11 @@ pub fn boolean45(
         exclusive_scan(&i12.iter().map(|i| i.abs()).collect::<Vec<_>>(), &mut vid_12r, nv);
         nv = (*vid_12r.last().unwrap()).abs() + i12.last().unwrap().abs();
     }
-    let nv_12 = nv - nv_rp - nv_rq;
 
     if !b03.v21.is_empty() {
         exclusive_scan(&i21.iter().map(|i| i.abs()).collect::<Vec<_>>(), &mut vid_21r, nv);
         nv = (*vid_21r.last().unwrap()).abs() + i21.last().unwrap().abs();
     }
-    let nv_21 = nv - nv_rp - nv_rq - nv_12;
 
     let mut ps_r = vec![Vec3::ZERO; nv as usize];
 
