@@ -352,20 +352,13 @@ pub fn boolean45(
     nv = (*vid_q2r.last().unwrap()).abs() + i30.last().unwrap().abs();
     let nv_rq = nv - nv_rp;
 
-    if !b03.v12.is_empty() {
-        exclusive_scan(&i12.iter().map(|i| i.abs()).collect::<Vec<_>>(), &mut vid_12r, nv);
-        nv = (*vid_12r.last().unwrap()).abs() + i12.last().unwrap().abs();
-    }
-
-    if !b03.v21.is_empty() {
-        exclusive_scan(&i21.iter().map(|i| i.abs()).collect::<Vec<_>>(), &mut vid_21r, nv);
-        nv = (*vid_21r.last().unwrap()).abs() + i21.last().unwrap().abs();
-    }
+    if !b03.v12.is_empty() { exclusive_scan(&i12.iter().map(|i| i.abs()).collect::<Vec<_>>(), &mut vid_12r, nv); nv = (*vid_12r.last().unwrap()).abs() + i12.last().unwrap().abs(); }
+    if !b03.v21.is_empty() { exclusive_scan(&i21.iter().map(|i| i.abs()).collect::<Vec<_>>(), &mut vid_21r, nv); nv = (*vid_21r.last().unwrap()).abs() + i21.last().unwrap().abs(); }
 
     let mut ps_r = vec![Vec3::ZERO; nv as usize];
 
-    for i in 0..mp.nv { duplicate_verts(&i03, &vid_p2r, &mp.ps, &mut ps_r, i); }
-    for i in 0..mq.nv { duplicate_verts(&i30, &vid_q2r, &mq.ps, &mut ps_r, i); }
+    for i in 0..mp.nv         { duplicate_verts(&i03, &vid_p2r, &mp.ps,   &mut ps_r, i); }
+    for i in 0..mq.nv         { duplicate_verts(&i30, &vid_q2r, &mq.ps,   &mut ps_r, i); }
     for i in 0..b03.v12.len() { duplicate_verts(&i12, &vid_12r, &b03.v12, &mut ps_r, i); }
     for i in 0..b03.v21.len() { duplicate_verts(&i21, &vid_21r, &b03.v21, &mut ps_r, i); }
 
