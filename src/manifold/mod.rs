@@ -16,9 +16,10 @@ use super::hmesh::Hmesh;
 // The core struct for all boolean operations. Avoid modifying properties directly, as the struct
 // maintains internal face index sorting based on vertex positions—a prerequisite for all subsequent operations.
 #[derive(Clone, Debug)]
-pub struct Manifold {
+pub struct Manifold<S = Real>  {
     pub ps: Vec<Vec3>,            // positions
     pub hs: Vec<Half>,            // halfedges
+    pub uv: Vec<S>,               //
     pub nv: usize,                // number of vertices
     pub nf: usize,                // number of faces
     pub nh: usize,                // number of halfedges
@@ -35,8 +36,8 @@ pub struct Manifold {
 impl Manifold {
     pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> {
 
-        if pos.len() % 3 != 0 { return Err("pos must be a multiple of 3".into()); }
-        if idx.len() % 3 != 0 { return Err("idx must be a multiple of 3".into()); }
+        if !pos.len().is_multiple_of(3) { return Err("pos must be a multiple of 3".into()); }
+        if !idx.len().is_multiple_of(3) { return Err("idx must be a multiple of 3".into()); }
 
         // dedup vertices
         let mut hash  = HashMap::with_capacity(pos.len() / 3);
@@ -87,6 +88,7 @@ impl Manifold {
             nv: hm.nv,
             nf: hm.nf,
             nh: hm.nh,
+            uv: vec![],
             ps,
             hs,
             bounding_box: bb,

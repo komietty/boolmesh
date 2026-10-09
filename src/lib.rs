@@ -28,6 +28,10 @@ pub mod prelude {
     pub use crate::compute_boolean;
 }
 
+pub trait Data: Clone + Send + Sync + std::fmt::Debug + PartialEq + Default + std::ops::Add<Output = Self> + std::ops::Mul<Real, Output = Self> {}
+impl<T> Data for T where T: Clone + Send + Sync + std::fmt::Debug + PartialEq + Default + std::ops::Add<Output = T> + std::ops::Mul<Real, Output = T> {}
+
+
 pub fn compute_boolean(
     mp: &Manifold,
     mq: &Manifold,

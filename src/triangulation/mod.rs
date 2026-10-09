@@ -19,9 +19,9 @@ pub struct Triangulation {
     pub ns: Vec<Vec3>,
 }
 
-pub fn triangulate(
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn triangulate<S>(
+    mp: &Manifold<S>,
+    mq: &Manifold<S>,
     b45: &Boolean45,
     eps: Real,
 ) -> Result<Triangulation, String> {
@@ -197,9 +197,9 @@ pub struct Pt {
     pub idx: usize
 }
 
-fn update_reference(
-    mp: &Manifold,
-    mq: &Manifold,
+fn update_reference<S>(
+    mp: &Manifold<S>,
+    mq: &Manifold<S>,
     rs: &mut[Tref],
 ) {
     for r in rs.iter_mut() {

@@ -72,9 +72,9 @@ impl<'a> Kernel12<'a> {
     }
 }
 
-pub fn intersect12 (
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn intersect12<S> (
+    mp: &Manifold<S>,
+    mq: &Manifold<S>,
     p1q2: &mut Vec<[usize; 2]>,
     expand: Real,
     fwd: bool

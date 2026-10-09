@@ -40,9 +40,9 @@ fn exclusive_scan(input: &[i32], output: &mut [i32], offset: i32) {
     }
 }
 
-fn size_output(
-    mp: &Manifold,
-    mq: &Manifold,
+fn size_output<S>(
+    mp: &Manifold<S>,
+    mq: &Manifold<S>,
     i03: &[i32],
     i30: &[i32],
     i12: &[i32],
@@ -325,9 +325,9 @@ pub struct Boolean45 {
     pub nv_from_q: usize,
 }
 
-pub fn boolean45(
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn boolean45<S>(
+    mp: &Manifold<S>,
+    mq: &Manifold<S>,
     b03: &Boolean03,
     op: &OpType
 ) -> Boolean45 {

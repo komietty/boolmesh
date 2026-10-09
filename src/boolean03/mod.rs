@@ -22,9 +22,9 @@ pub struct Boolean03 {
     pub v21: Vec<Vec3>,
 }
 
-pub fn boolean03(
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn boolean03<S: Sync>(
+    mp: &Manifold<S>,
+    mq: &Manifold<S>,
     op: &OpType,
 ) -> Boolean03 {
     let e = if op == &OpType::Add { 1. } else { -1. };
