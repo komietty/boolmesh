@@ -65,6 +65,7 @@ pub fn compute_boolean<S: Data>(
             .chunks(3)
             .map(|hs| Vec3u::new(hs[0].tail, hs[1].tail, hs[2].tail))
             .collect(),
+        vec![],
         Some(eps),
         Some(tol)
     )

@@ -34,9 +34,14 @@ pub struct Manifold<S = Real>  {
 }
 
 impl Manifold {
-    pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> {
+    pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> { Self::new_with_values(pos, idx, &[]) }
+}
+
+impl<S: Data> Manifold<S> {
+    pub fn new_with_values(pos: &[f64], idx: &[usize], val: &[S]) -> Result<Self, String> {
         if !pos.len().is_multiple_of(3) { return Err("pos must be a multiple of 3".into()); }
         if !idx.len().is_multiple_of(3) { return Err("idx must be a multiple of 3".into()); }
+        if !val.is_empty() && val.len() != pos.len() / 3 { return Err("uv must hold one value per vertex".into()); }
 
         // dedup vertices
         let mut hash = HashMap::with_capacity(pos.len() / 3);
@@ -61,14 +66,13 @@ impl Manifold {
             .filter(|&is| is.x != is.y && is.y != is.z && is.z != is.x)
             .collect::<Vec<_>>();
 
-        Self::new_impl(weld, idx, None, None)
+        Self::new_impl(weld, idx, val.to_vec(), None, None)
     }
-}
 
-impl<S: Data> Manifold<S> {
-pub(crate) fn new_impl(
+    pub(crate) fn new_impl(
         ps : Vec<Vec3>,
         idx: Vec<Vec3u>,
+        val: Vec<S>,
         eps: Option<Real>,
         tol: Option<Real>,
     ) -> Result<Self, String> {
@@ -88,7 +92,7 @@ pub(crate) fn new_impl(
             nv: hm.nv,
             nf: hm.nf,
             nh: hm.nh,
-            uv: vec![],
+            uv: val,
             ps,
             hs,
             bounding_box: bb,
@@ -121,7 +125,6 @@ pub(crate) fn new_impl(
             }
         })
     }
-
 }
 
 fn compute_face_morton(
