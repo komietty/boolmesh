@@ -4,16 +4,17 @@
 pub mod dedup;
 pub mod re_swap;
 pub mod collapse;
-use crate::{Real, Half, Tref, next_of, Vec2, Vec3};
+use crate::{Data, Real, Half, Tref, next_of, Vec2, Vec3};
 use collapse::{collapse_edge, collapse_short_edges, collapse_collinear_edges};
 use dedup::dedupe_edges;
 use re_swap::swap_degenerates;
 
-pub fn simplify_topology(
+pub fn simplify_topology<S: Data>(
     hs: &mut Vec<Half>,
     ps: &mut Vec<Vec3>,
     ns: &mut Vec<Vec3>,
     rs: &mut Vec<Tref>,
+    uv: &mut Vec<S>,
     nv_from_p: usize,
     nv_from_q: usize,
     eps: Real,
@@ -23,7 +24,7 @@ pub fn simplify_topology(
     dedupe_edges(ps, hs, ns, rs);
     collapse_short_edges(hs, ps, ns, rs, nv, eps);
     collapse_collinear_edges(hs, ps, ns, rs, nv, eps);
-    swap_degenerates(hs, ps, ns, rs, nv, eps);
+    swap_degenerates(hs, ps, ns, rs, uv, nv, eps);
 }
 
 fn head_of(hs: &[Half], i: usize) -> usize { hs[i].head }

@@ -43,12 +43,14 @@ pub fn compute_boolean<S: Data>(
     let     b03 = boolean03(mp, mq, &op);
     let mut b45 = boolean45(mp, mq, &b03, &op);
     let mut trg = triangulate(mp, mq, &b45, eps)?;
+    let mut val: Vec<S> = vec![];
 
     simplify_topology(
         &mut trg.hs,
         &mut b45.ps,
         &mut trg.ns,
         &mut trg.rs,
+        &mut val,
         b45.nv_from_p,
         b45.nv_from_q,
         eps
