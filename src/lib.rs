@@ -32,11 +32,11 @@ pub trait Data: Clone + Send + Sync + std::fmt::Debug + PartialEq + Default + st
 impl<T> Data for T where T: Clone + Send + Sync + std::fmt::Debug + PartialEq + Default + std::ops::Add<Output = T> + std::ops::Mul<Real, Output = T> {}
 
 
-pub fn compute_boolean(
-    mp: &Manifold,
-    mq: &Manifold,
+pub fn compute_boolean<S: Data>(
+    mp: &Manifold<S>,
+    mq: &Manifold<S>,
     op: OpType,
-) -> Result<Manifold, String> {
+) -> Result<Manifold<S>, String> {
     let eps = mp.eps.max(mq.eps);
     let tol = mp.tol.max(mq.tol);
 

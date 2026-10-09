@@ -9,7 +9,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use bounds::BBox;
 use crate::collider::{morton_code, MortonCollider, K_NO_CODE};
-use crate::{Real, Half, Vec3, Vec3u, K_PRECISION, next_of, Mat3};
+use crate::{Data, Real, Half, Vec3, Vec3u, K_PRECISION, next_of};
 use super::hmesh::Hmesh;
 #[cfg(feature = "rayon")] use rayon::prelude::*;
 
@@ -35,20 +35,18 @@ pub struct Manifold<S = Real>  {
 
 impl Manifold {
     pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> {
-
         if !pos.len().is_multiple_of(3) { return Err("pos must be a multiple of 3".into()); }
         if !idx.len().is_multiple_of(3) { return Err("idx must be a multiple of 3".into()); }
 
         // dedup vertices
-        let mut hash  = HashMap::with_capacity(pos.len() / 3);
-        let mut weld  = Vec::with_capacity(pos.len() / 3);
+        let mut hash = HashMap::with_capacity(pos.len() / 3);
+        let mut weld = Vec::with_capacity(pos.len() / 3);
         let mut rmap = vec![0; pos.len()];
 
         for (i, p) in pos.chunks(3).enumerate() {
             let v = Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real);
             let k = (v.x.to_bits(), v.y.to_bits(), v.z.to_bits());
-            if let Some(&w) = hash.get(&k) { rmap[i] = w; }
-            else {
+            if let Some(&w) = hash.get(&k) { rmap[i] = w; } else {
                 let n = weld.len();
                 weld.push(v);
                 hash.insert(k, n);
@@ -65,8 +63,10 @@ impl Manifold {
 
         Self::new_impl(weld, idx, None, None)
     }
+}
 
-    pub(crate) fn new_impl(
+impl<S: Data> Manifold<S> {
+pub(crate) fn new_impl(
         ps : Vec<Vec3>,
         idx: Vec<Vec3u>,
         eps: Option<Real>,
