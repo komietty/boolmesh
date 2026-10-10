@@ -22,8 +22,8 @@ pub fn simplify_topology<S: Data>(
     let nv = nv_from_p + nv_from_q;
     split_pinched_vert(hs, ps);
     dedupe_edges(ps, hs, ns, rs);
-    collapse_short_edges(hs, ps, ns, rs, nv, eps);
-    collapse_collinear_edges(hs, ps, ns, rs, nv, eps);
+    collapse_short_edges(hs, ps, ns,     rs, nv, !uv.is_empty(), eps);
+    collapse_collinear_edges(hs, ps, ns, rs, nv, !uv.is_empty(), eps);
     swap_degenerates(hs, ps, ns, rs, uv, nv, eps);
 }
 
@@ -138,7 +138,7 @@ fn collapse_triangle(hs: &mut [Half], hids: &(usize, usize, usize)) {
     let pair2 = pair_of(hs, hids.2);
     hs[pair1].pair = pair2;
     hs[pair2].pair = pair1;
-    for i in [hids.0, hids.1, hids.2] { hs[i] = Half::default(); }
+    for i in [hids.0, hids.1, hids.2] { hs[i] = Half { prop: hs[i].prop, ..Half::default() }; }
 }
 
 fn is01_longest_2d(

@@ -35,15 +35,17 @@ pub struct Half {
     pub tail: usize,
     pub head: usize,
     pub pair: usize,
+    pub prop: usize,
 }
 
 impl Default for Half {
-    fn default() -> Self { Self { tail: usize::MAX, head: usize::MAX, pair: usize::MAX } }
+    fn default() -> Self { Self { tail: usize::MAX, head: usize::MAX, pair: usize::MAX, prop: usize::MAX } }
 }
 
 impl Half {
-    pub fn new(tail: usize, head: usize, pair: usize) -> Self { Self { tail, head, pair } }
-    pub fn new_without_pair(tail: usize, head: usize) -> Self { Self { tail, head, pair: usize::MAX } }
+    pub fn new(tail: usize, head: usize, pair: usize) -> Self { Self { tail, head, pair, prop: usize::MAX } }
+    pub fn new_without_pair(tail: usize, head: usize) -> Self { Self { tail, head, pair: usize::MAX, prop: usize::MAX } } // todo: rename
+    pub fn with_prop(tail: usize, head: usize, pair: usize, prop: usize) -> Self { Self { tail, head, pair, prop } }  // todo: rename
     pub fn is_forward(&self) -> bool { self.tail < self.head }
     pub fn tail(&self) -> Option<usize> { if self.tail == usize::MAX {None} else {Some(self.tail)} }
     pub fn head(&self) -> Option<usize> { if self.head == usize::MAX {None} else {Some(self.head)} }

@@ -17,14 +17,14 @@ use super::hmesh::Hmesh;
 // maintains internal face index sorting based on vertex positions—a prerequisite for all subsequent operations.
 #[derive(Clone, Debug)]
 pub struct Manifold<S = Real>  {
-    pub ps: Vec<Vec3>,            // positions
-    pub hs: Vec<Half>,            // halfedges
-    pub uv: Vec<S>,               //
+    pub ps : Vec<Vec3>,           // positions
+    pub hs : Vec<Half>,           // halfedges
+    pub uvs: Vec<S>,              //
+    pub eps: Real,                // epsilon
+    pub tol: Real,                // tolerance
     pub nv: usize,                // number of vertices
     pub nf: usize,                // number of faces
     pub nh: usize,                // number of halfedges
-    pub eps: Real,                // epsilon
-    pub tol: Real,                // tolerance
     pub bounding_box: BBox,       //
     pub face_normals: Vec<Vec3>,  //
     pub vert_normals: Vec<Vec3>,  //
@@ -34,11 +34,11 @@ pub struct Manifold<S = Real>  {
 }
 
 impl Manifold {
-    pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> { Self::new_with_values(pos, idx, &[]) }
+    pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, String> { Self::new_with_props(pos, idx, &[]) }
 }
 
 impl<S: Data> Manifold<S> {
-    pub fn new_with_values(pos: &[f64], idx: &[usize], val: &[S]) -> Result<Self, String> {
+    pub fn new_with_props(pos: &[f64], idx: &[usize], val: &[S]) -> Result<Self, String> {
         if !pos.len().is_multiple_of(3) { return Err("pos must be a multiple of 3".into()); }
         if !idx.len().is_multiple_of(3) { return Err("idx must be a multiple of 3".into()); }
         if !val.is_empty() && val.len() != pos.len() / 3 { return Err("uv must hold one value per vertex".into()); }
@@ -70,15 +70,15 @@ impl<S: Data> Manifold<S> {
     }
 
     pub(crate) fn new_impl(
-        ps : Vec<Vec3>,
+        pos: Vec<Vec3>,
         idx: Vec<Vec3u>,
-        val: Vec<S>,
+        uvs: Vec<S>,
         eps: Option<Real>,
         tol: Option<Real>,
     ) -> Result<Self, String> {
-        let bb = BBox::new(None, &ps);
-        let (mut f_bb, mut f_mt) = compute_face_morton(&ps, &idx, &bb);
-        let hm = sort_faces(&ps, &idx, &mut f_bb, &mut f_mt)?;
+        let bb = BBox::new(None, &pos);
+        let (mut f_bb, mut f_mt) = compute_face_morton(&pos, &idx, &bb);
+        let hm = sort_faces(&pos, &idx, &mut f_bb, &mut f_mt)?;
         let hs = hm.half.iter().map(|&i| Half::new(hm.tail[i], hm.head[i], hm.twin[i])).collect::<Vec<_>>();
 
         let mut e = K_PRECISION * bb.scale();
@@ -86,15 +86,15 @@ impl<S: Data> Manifold<S> {
         let eps = if let Some(e_) = eps { e_ } else { e };
         let tol = if let Some(t_) = tol { t_ } else { e };
         let collider = MortonCollider::new(&f_bb, &f_mt);
-        let coplanar = compute_coplanar_idx(&ps, &hm.fns, &hs, eps);
+        let coplanar = compute_coplanar_idx(&pos, &hm.fns, &hs, eps);
 
         let mfd = Manifold {
+            hs,
+            ps: pos,
+            uvs,
             nv: hm.nv,
             nf: hm.nf,
             nh: hm.nh,
-            uv: val,
-            ps,
-            hs,
             bounding_box: bb,
             vert_normals: hm.vns,
             face_normals: hm.fns,

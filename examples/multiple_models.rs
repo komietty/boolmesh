@@ -38,10 +38,13 @@ fn setup(
 
     let mut mfs = vec![];
     for m in vec![&m0[0].mesh, &m1[0].mesh] {
-        mfs.push(Manifold::new(
-            &m.positions.iter().map(|&v| v as f64).collect::<Vec<_>>(),
-            &m.indices.iter().map(|&v| v as usize).collect::<Vec<_>>(),
-        ).unwrap());
+        let pos = m.positions.iter().map(|&v| v as f64).collect::<Vec<_>>();
+        let idx = m.indices.iter().map(|&v| v as usize).collect::<Vec<_>>();
+        let props = pos.chunks(3).map(|p| {
+            let d = boolmesh::Vec3::new(p[0], p[1], p[2]).normalize_or_zero();
+            boolmesh::Mat3::from_cols(d * d.x, d * d.y, d * d.z)
+        }).collect::<Vec<_>>();
+        mfs.push(Manifold::new_with_props(&pos, &idx, &props).unwrap());
     }
     mfs.push(compute_boolean(&mfs[0], &mfs[1], OpType::Subtract).unwrap());
 

@@ -295,6 +295,7 @@ mod test_simplification {
             &mut ns,
             &mut refs,
             9,
+            false,
             1e-6
         );
 

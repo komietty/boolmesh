@@ -117,7 +117,7 @@ fn recursive_edge_swap<S: Data>(
         swap_edge();
         if (u3 - u2).length_squared() < tol * tol {
             *tag += 1;
-            collapse_edge(hs, ps, ns, ts, t0e.2, tol, edges);
+            collapse_edge(hs, ps, ns, ts, t0e.2, !uv.is_empty(), tol, edges);
             edges.clear();
         } else {
             visit[h0] = *tag;
