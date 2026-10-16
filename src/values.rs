@@ -23,7 +23,18 @@ fn get_barycentric_ratio(v: &Vec3, pos: &[Vec3; 3], tol: Real) -> Vec3 {
             let c = dif[i].cross(*v - pos[nxt(i)]);
             uvw[i] = if c.length_squared() < lsq[i] * tol2 { 0. } else { c.dot(crs) };
         }
-        uvw /= uvw[0] + uvw[1] + uvw[2];
+        // Within `tol` of all three edge lines (a thin triangle at a coarse tolerance)
+        // every weight is zero; dividing would make every value NaN. Take the nearest
+        // corner instead, still a valid interpolation.
+        let sum = uvw[0] + uvw[1] + uvw[2];
+        if sum.abs() > Real::MIN_POSITIVE && sum.is_finite() {
+            uvw /= sum;
+            return uvw;
+        }
+        let d = [0, 1, 2].map(|i| (*v - pos[i]).length_squared());
+        let near = if d[0] <= d[1] && d[0] <= d[2] { 0 } else if d[1] <= d[2] { 1 } else { 2 };
+        uvw = Vec3::ZERO;
+        uvw[near] = 1.;
         uvw
     } else {
         let next = nxt(long);
@@ -76,4 +87,19 @@ pub fn annotate<S: Data>(
         }
     }
     vs
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_point_near_all_three_edges_of_thin_triangle() {
+        // height 1.05e-4 > tol, so the triangle is not treated as degenerate, yet the point
+        // is within tol = 1e-4 of all three edge lines and of no corner
+        let pos = [Vec3::new(0., 0., 0.), Vec3::new(1., 0., 0.), Vec3::new(0.5, 1.05e-4, 0.)];
+        let uvw = get_barycentric_ratio(&Vec3::new(0.45, 0.5e-4, 0.), &pos, 1e-4);
+        assert!(uvw.is_finite(), "{uvw:?}");
+        assert!((uvw[0] + uvw[1] + uvw[2] - 1.).abs() < 1e-12, "{uvw:?}");
+    }
 }
