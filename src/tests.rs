@@ -440,6 +440,30 @@ mod test_mesh_cleanup {
         assert_eq!(mfd.nv, 4);
         assert_eq!(mfd.nf, 4);
     }
+
+    #[test]
+    fn test_edge_shared_by_four_faces_is_an_error() {
+        // two tetrahedra sharing the edge 0-1: that edge has four faces
+        let pos = vec![
+            0., 0., 0.,
+            1., 0., 0.,
+            0., 1., 0.,
+            0., 0., 1.,
+            0., -1., 0.,
+            0., 0., -1.,
+        ];
+        let idx = vec![
+            0, 2, 1,
+            0, 1, 3,
+            0, 3, 2,
+            1, 2, 3,
+            0, 4, 1,
+            0, 1, 5,
+            0, 5, 4,
+            1, 4, 5,
+        ];
+        assert!(Manifold::new(&pos, &idx).is_err());
+    }
 }
 
 // Degenerate configurations of two icospheres: identical, offset or rotated by a few ulp,
