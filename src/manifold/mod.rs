@@ -41,15 +41,18 @@ impl<S: Data> Manifold<S> {
         if !pos.len().is_multiple_of(3) { return Err("pos must be a multiple of 3".into()); }
         if !idx.len().is_multiple_of(3) { return Err("idx must be a multiple of 3".into()); }
         if !val.is_empty() && val.len() != idx.len() { return Err("val must hold one value per corner".into()); }
+        let nv = pos.len() / 3;
+        if idx.iter().any(|&i| i >= nv) { return Err("idx must refer to vertices in pos".into()); }
 
         // dedup vertices
-        let mut hash = HashMap::with_capacity(pos.len() / 3);
-        let mut weld = Vec::with_capacity(pos.len() / 3);
-        let mut rmap = vec![0; pos.len()];
+        let mut hash = HashMap::with_capacity(nv);
+        let mut weld = Vec::with_capacity(nv);
+        let mut rmap = vec![0; nv];
         let mut hs   = Vec::with_capacity(idx.len());
 
         for (i, p) in pos.chunks(3).enumerate() {
             let v = Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real);
+            if !v.is_finite() { return Err("pos must not contain NaN or infinite coordinates".into()); }
             let k = (v.x.to_bits(), v.y.to_bits(), v.z.to_bits());
             if let Some(&w) = hash.get(&k) { rmap[i] = w; } else {
                 let n = weld.len();
