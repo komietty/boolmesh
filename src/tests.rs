@@ -787,3 +787,41 @@ mod test_values {
     }
 
 }
+
+#[cfg(test)]
+mod test_input_validation {
+    use crate::prelude::Manifold;
+
+    // A unit tetrahedron: valid input, so each test changes one thing.
+    const POS: [f64; 12] = [0., 0., 0., 1., 0., 0., 0., 1., 0., 0., 0., 1.];
+    const IDX: [usize; 12] = [0, 2, 1, 0, 1, 3, 0, 3, 2, 1, 2, 3];
+
+    #[test]
+    fn test_valid_tet_is_accepted() {
+        assert!(Manifold::new(&POS, &IDX).is_ok());
+    }
+
+    #[test]
+    fn test_index_past_end_of_pos_is_an_error() {
+        let mut idx = IDX;
+        idx[0] = 99;
+        assert!(Manifold::new(&POS, &idx).is_err());
+    }
+
+    #[test]
+    fn test_index_past_last_vertex_is_an_error() {
+        // 4 vertices, but `pos.len()` is 12: index 5 used to be read as vertex 0.
+        let mut idx = IDX;
+        idx[0] = 5;
+        assert!(Manifold::new(&POS, &idx).is_err());
+    }
+
+    #[test]
+    fn test_non_finite_coordinates_are_errors() {
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let mut pos = POS;
+            pos[3] = bad;
+            assert!(Manifold::new(&pos, &IDX).is_err(), "{bad} was accepted");
+        }
+    }
+}
