@@ -18,6 +18,7 @@ pub struct Ecvt {
     pub vl:  Option<Weak<RefCell<Ecvt>>>,
     pub vr:  Option<Weak<RefCell<Ecvt>>>,
     pub cost: Real,
+    pub seq: usize,                       // creation order, breaks ties without depending on addresses
 }
 
 impl Ecvt {
@@ -33,7 +34,7 @@ impl Ecvt {
     pub fn ptr_r_of_l(&self) -> EvPtr { self.ptr_l().borrow().ptr_r() }
 
     pub fn new(idx: usize, pos: Vec2) -> Self {
-        Self { idx, pos, dir: Vec2::new(0., 0.), ear: None, vl: None, vr: None, cost: 0. }
+        Self { idx, pos, dir: Vec2::new(0., 0.), ear: None, vl: None, vr: None, cost: 0., seq: 0 }
     }
 
     // Shorter than half of epsilon, to be conservative so that it doesn't
@@ -234,11 +235,7 @@ impl Ord for EvPtrMinCost {
         self.0.borrow().cost
             .partial_cmp(&other.0.borrow().cost)
             .unwrap_or(Ordering::Equal)
-            .then_with(|| {
-                let ptr1 = Rc::as_ptr(&self.0) as usize;
-                let ptr2 = Rc::as_ptr(&other.0) as usize;
-                ptr1.cmp(&ptr2)
-            })
+            .then_with(|| self.0.borrow().seq.cmp(&other.0.borrow().seq))
     }
 }
 
@@ -256,11 +253,7 @@ impl Ord for EvPtrMaxPosX {
         other.0.borrow().pos.x
             .partial_cmp(&self.0.borrow().pos.x)
             .unwrap_or(Ordering::Equal)
-            .then_with(|| {
-                let ptr1 = Rc::as_ptr(&self.0) as usize;
-                let ptr2 = Rc::as_ptr(&other.0) as usize;
-                ptr1.cmp(&ptr2)
-            })
+            .then_with(|| self.0.borrow().seq.cmp(&other.0.borrow().seq))
     }
 }
 
@@ -344,6 +337,13 @@ impl EarClip {
         std::mem::take(&mut self.tris)
     }
 
+    fn add(&mut self, mut v: Ecvt) -> EvPtr {
+        v.seq = self.polygon.len();
+        let v = Rc::new(RefCell::new(v));
+        self.polygon.push(Rc::clone(&v));
+        v
+    }
+
     // This function and JoinPolygons are the only functions that affect
     // the circular list data structure. This helps ensure it remains circular.
     fn link(vl: &EvPtr, vr: &EvPtr) {
@@ -381,17 +381,14 @@ impl EarClip {
         let mut bgns = vec![];
         for poly in polys.iter() {
             let v = poly.first().unwrap();
-            self.polygon.push(Rc::new(RefCell::new(Ecvt::new(v.idx, v.pos))));
-
-            let first    = Rc::clone(self.polygon.last().unwrap());
+            let first    = self.add(Ecvt::new(v.idx, v.pos));
             let mut last = Rc::clone(&first);
             self.bbox.union(first.borrow().pos);
             bgns.push(Rc::clone(&first));
 
             for v in poly.iter().skip(1) {
                 self.bbox.union(v.pos);
-                self.polygon.push(Rc::new(RefCell::new(Ecvt::new(v.idx, v.pos))));
-                let next = Rc::clone(self.polygon.last().unwrap());
+                let next = self.add(Ecvt::new(v.idx, v.pos));
                 Self::link(&last, &next);
                 last = Rc::clone(&next);
             }
@@ -533,10 +530,8 @@ impl EarClip {
     // To do this, both verts are duplicated and reattached. This process may create degenerate ears,
     // so these are clipped if necessary to keep from confusing sub_sequent key-holing operations.
     fn join_polygons(&mut self, sta: &EvPtr, con: &EvPtr) {
-        let sta1 = Rc::new(RefCell::new(sta.borrow().clone()));
-        let con1 = Rc::new(RefCell::new(con.borrow().clone()));
-        self.polygon.push(Rc::clone(&sta1));
-        self.polygon.push(Rc::clone(&con1));
+        let sta1 = self.add(sta.borrow().clone());
+        let con1 = self.add(con.borrow().clone());
         sta.borrow().ptr_r().borrow_mut().vl = Some(Rc::downgrade(&sta1));
         con.borrow().ptr_l().borrow_mut().vr = Some(Rc::downgrade(&con1));
         Self::link(sta, con);
