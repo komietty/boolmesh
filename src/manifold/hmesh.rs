@@ -42,9 +42,7 @@ fn edge_topology(
     }}
     ett.sort();
 
-    // An edge shared by more than two faces cannot be paired into halfedges; the
-    // counting and pairing below assume at most two and would index past the end.
-    if ett.windows(3).any(|w| w[0][..2] == w[1][..2] && w[1][..2] == w[2][..2]) {
+    if ett.chunk_by(|a, b| a[..2] == b[..2]).any(|g| g.len() > 2) {
         return Err("Input mesh has an edge shared by more than two faces.".into());
     }
 

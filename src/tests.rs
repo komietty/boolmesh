@@ -613,7 +613,8 @@ mod test_sphere_degenerate {
 #[cfg(test)]
 mod test_values {
     use crate::prelude::*;
-    use crate::{Real, Vec2};
+    use crate::{Real, Vec2, Vec3};
+    use crate::values::get_barycentric_ratio;
 
     fn tol() -> f64 { if cfg!(feature = "f32") { 1e-4 } else { 1e-9 } }
 
@@ -784,6 +785,16 @@ mod test_values {
             assert!(!r.vals.is_empty());
             check_corner_uvs(&r, &cubes, tol());
         }
+    }
+
+    #[test]
+    fn test_point_near_all_three_edges_of_thin_triangle() {
+        // height 1.05e-4 > tol, so the triangle is not treated as degenerate, yet the point
+        // is within tol = 1e-4 of all three edge lines and of no corner
+        let pos = [Vec3::new(0., 0., 0.), Vec3::new(1., 0., 0.), Vec3::new(0.5, 1.05e-4, 0.)];
+        let uvw = get_barycentric_ratio(&Vec3::new(0.45, 0.5e-4, 0.), &pos, 1e-4);
+        assert!(uvw.is_finite(), "{uvw:?}");
+        assert!((uvw[0] + uvw[1] + uvw[2] - 1.).abs() < 1e-12, "{uvw:?}");
     }
 
 }
