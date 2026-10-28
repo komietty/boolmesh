@@ -2,7 +2,7 @@
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
 use std::mem;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use crate::{Manifold, Real, Vec3, Half, Tref, face_of};
 use crate::boolean03::Boolean03;
 use crate::bounds::BBox;
@@ -115,8 +115,8 @@ fn add_new_edge_verts(
     i12: &[i32],
     v12_r: &[i32],
     hs_p: &[Half],
-    pt_old: &mut HashMap<usize, Vec<EdgePt>>,
-    pt_new: &mut HashMap<(usize, usize), Vec<EdgePt>>,
+    pt_old: &mut BTreeMap<usize, Vec<EdgePt>>,
+    pt_new: &mut BTreeMap<(usize, usize), Vec<EdgePt>>,
     fwd: bool,
     oft: usize,
 ) {
@@ -184,7 +184,7 @@ fn append_partial_edges(
     fwd: bool,                              //
     hs_r: &mut [Half],                      // halfedge data of mfd_r, empty yet
     rs_r: &mut [Tref],                      // map from halfedge in mfd_r to triangle info
-    pt_p: &mut HashMap<usize, Vec<EdgePt>>, //
+    pt_p: &mut BTreeMap<usize, Vec<EdgePt>>, //
     face_ptr_r: &mut [i32],                 //
     whole_flag: &mut [bool],                // a flag to find out a halfedge from mfd_p is entirely usable in mfd_r
 ) {
@@ -238,7 +238,7 @@ fn append_new_edges(
     fid_pq2r: &[i32],                                  //
     nf_p: usize,                                       // num of faces in mfd_p
     face_ptr_r: &mut[i32],                             //
-    pt_new: &mut HashMap<(usize, usize), Vec<EdgePt>>, //
+    pt_new: &mut BTreeMap<(usize, usize), Vec<EdgePt>>, //
     hs_r: &mut [Half],                                 // the halfedge data of mfd_r, empty yet
     rs_r: &mut [Tref],                                 //
 ) {
@@ -362,9 +362,9 @@ pub fn boolean45<S>(
     for i in 0..b03.v12.len() { duplicate_verts(&i12, &vid_12r, &b03.v12, &mut ps_r, i); }
     for i in 0..b03.v21.len() { duplicate_verts(&i21, &vid_21r, &b03.v21, &mut ps_r, i); }
 
-    let mut pt_p   = HashMap::new();
-    let mut pt_q   = HashMap::new();
-    let mut pt_new = HashMap::new();
+    let mut pt_p   = BTreeMap::new();
+    let mut pt_q   = BTreeMap::new();
+    let mut pt_new = BTreeMap::new();
     add_new_edge_verts(&b03.p1q2, &i12, &vid_12r, &mp.hs, &mut pt_p, &mut pt_new, true, 0);
     add_new_edge_verts(&b03.p2q1, &i21, &vid_21r, &mq.hs, &mut pt_q, &mut pt_new, false, b03.p1q2.len());
 

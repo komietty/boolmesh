@@ -836,3 +836,42 @@ mod test_input_validation {
         }
     }
 }
+
+#[cfg(test)]
+mod test_determinism {
+    use crate::{Manifold, OpType, compute_boolean};
+
+    fn cube(lo: [f64; 3], hi: [f64; 3]) -> Manifold {
+        let mut ps = vec![];
+        for i in 0..8 {
+            ps.push(if i & 1 == 0 { lo[0] } else { hi[0] });
+            ps.push(if i & 2 == 0 { lo[1] } else { hi[1] });
+            ps.push(if i & 4 == 0 { lo[2] } else { hi[2] });
+        }
+        let fs = [0, 2, 1, 1, 2, 3, 4, 5, 6, 5, 7, 6, 0, 1, 4, 1, 5, 4, 2, 6, 3, 3, 6, 7, 0, 4, 2, 2, 4, 6, 1, 3, 5, 3, 7, 5];
+        Manifold::new(&ps, &fs).unwrap()
+    }
+
+    fn fingerprint(m: &Manifold) -> (Vec<[u64; 3]>, Vec<[usize; 3]>) {
+        let ps = m.ps.iter().map(|p| [p.x as f64, p.y as f64, p.z as f64].map(f64::to_bits)).collect();
+        let hs = m.hs.iter().map(|h| [h.tail, h.head, h.pair]).collect();
+        (ps, hs)
+    }
+
+    // Ties in the ear queue and the order of the edge maps once followed addresses and hash seeds.
+    #[test]
+    fn test_same_input_same_output() {
+        let block = cube([0.; 3], [10.; 3]);
+        let cases: [(Manifold, fn() -> OpType); 3] = [
+            (cube([2., 2., 5.], [8., 8., 10.]), || OpType::Subtract),
+            (cube([10., 2., 2.], [15., 8., 8.]), || OpType::Add),
+            (cube([4., 4., -1.], [6., 6., 11.]), || OpType::Subtract),
+        ];
+        for (other, op) in cases {
+            let first = fingerprint(&compute_boolean(&block, &other, op()).unwrap());
+            for _ in 0..30 {
+                assert_eq!(fingerprint(&compute_boolean(&block, &other, op()).unwrap()), first);
+            }
+        }
+    }
+}
